@@ -1,6 +1,6 @@
 interface HeaderProps {
-  activeTab: 'briefing' | 'fugats'
-  onTabChange: (t: 'briefing' | 'fugats') => void
+  activeTab: 'briefing' | 'fugats' | 'tractades'
+  onTabChange: (t: 'briefing' | 'fugats' | 'tractades') => void
 }
 
 export default function Header({ activeTab, onTabChange }: HeaderProps) {
@@ -12,7 +12,7 @@ export default function Header({ activeTab, onTabChange }: HeaderProps) {
             <span style={styles.logoIcon}>◈</span>
             <span style={styles.logoText}>INIBSA</span>
             <span style={styles.logoDivider}>|</span>
-            <span style={styles.logoSub}>Smart Demand Signals</span>
+            <span style={styles.logoSub}>Senyals de Demanda Intel·ligent</span>
           </div>
         </div>
         <div style={styles.center}>
@@ -21,7 +21,13 @@ export default function Header({ activeTab, onTabChange }: HeaderProps) {
               style={{ ...styles.tab, ...(activeTab === 'briefing' ? styles.tabActive : {}) }}
               onClick={() => onTabChange('briefing')}
             >
-              Daily Briefing
+              Briefing Diari
+            </button>
+            <button
+              style={{ ...styles.tab, ...(activeTab === 'tractades' ? styles.tabActive : {}) }}
+              onClick={() => onTabChange('tractades')}
+            >
+              Tractades
             </button>
             <button
               style={{ ...styles.tab, ...(activeTab === 'fugats' ? styles.tabActive : {}) }}
@@ -79,7 +85,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#6B7280',
     fontSize: 13,
     fontWeight: 400,
-    letterSpacing: 0.3,
   },
   center: {},
   tabs: {

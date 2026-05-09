@@ -5,9 +5,10 @@ interface Props {
   alerts: Alerta[]
   loading: boolean
   onToggleTreated: (a: Alerta) => void
+  listLabel?: string
 }
 
-export default function AlertList({ alerts, loading, onToggleTreated }: Props) {
+export default function AlertList({ alerts, loading, onToggleTreated, listLabel }: Props) {
   if (loading) {
     return (
       <div style={styles.empty}>
@@ -18,22 +19,23 @@ export default function AlertList({ alerts, loading, onToggleTreated }: Props) {
   }
 
   if (alerts.length === 0) {
+    const msg = listLabel === 'tractades'
+      ? 'Cap alerta tractada'
+      : 'Totes les alertes tractades. Bona feina!'
     return (
       <div style={styles.empty}>
         <span style={styles.emptyIcon}>✓</span>
-        <span style={styles.emptyText}>Totes les alertes tractades. Bona feina!</span>
+        <span style={styles.emptyText}>{msg}</span>
       </div>
     )
   }
 
   return (
     <div>
-      <div style={styles.count}>{alerts.length.toLocaleString()} ALERTES</div>
-      <div>
-        {alerts.map((a, i) => (
-          <AlertCard key={`${a.id_cliente}_${a.familia_potencial}_${a.tipus_alerta}_${i}`} alert={a} onToggleTreated={onToggleTreated} />
-        ))}
-      </div>
+      <div style={styles.count}>{alerts.length.toLocaleString()} alertes</div>
+      {alerts.map((a, i) => (
+        <AlertCard key={`${a.id_cliente}_${a.familia_potencial}_${a.tipus_alerta}_${i}`} alert={a} onToggleTreated={onToggleTreated} />
+      ))}
     </div>
   )
 }
@@ -64,8 +66,8 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#6B7280',
   },
   count: {
-    fontSize: 13,
-    fontWeight: 700,
+    fontSize: 12,
+    fontWeight: 600,
     color: '#6B7280',
     paddingBottom: 12,
   },

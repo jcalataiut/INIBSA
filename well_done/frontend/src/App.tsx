@@ -2,9 +2,15 @@ import { useState, useEffect, useCallback } from 'react'
 import type { Alerta } from './types'
 import { getAlerts, markTreated, unmarkTreated, getTreated } from './api/client'
 import Header from './components/Header'
-import Filters from './components/Filters'
 import AlertList from './components/AlertList'
 import FugatsTab from './components/FugatsTab'
+
+const DIES = ['diumenge', 'dilluns', 'dimarts', 'dimecres', 'dijous', 'divendres', 'dissabte']
+const MESOS = ['gener', 'febrer', 'març', 'abril', 'maig', 'juny', 'juliol', 'agost', 'setembre', 'octubre', 'novembre', 'desembre']
+
+function formatDate(d: Date): string {
+  return `${DIES[d.getDay()]}, ${d.getDate()} de ${MESOS[d.getMonth()]} de ${d.getFullYear()}`
+}
 
 const globalStyles = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -16,6 +22,12 @@ const globalStyles = `
   @keyframes spin { to { transform: rotate(360deg); } }
 `
 
+const TITLE: Record<string, string> = {
+  briefing: 'Briefing Diari',
+  tractades: 'Tractades',
+  fugats: 'Fugats',
+}
+
 export default function App() {
   useEffect(() => {
     const style = document.createElement('style')
@@ -26,25 +38,21 @@ export default function App() {
   const [alerts, setAlerts] = useState<Alerta[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [activeTab, setActiveTab] = useState<'briefing' | 'fugats'>('briefing')
-
-  const [filterSegment, setFilterSegment] = useState<string[]>([])
-  const [filterTipus, setFilterTipus] = useState<string[]>([])
-  const [filterUrgencia, setFilterUrgencia] = useState<string[]>([])
-  const [showTreated, setShowTreated] = useState(false)
+  const [activeTab, setActiveTab] = useState<'briefing' | 'fugats' | 'tractades'>('briefing')
 
   const fetchData = useCallback(async () => {
     setLoading(true)
+    setError('')
     try {
-      const a = await getAlerts({ pendents: !showTreated })
+      const a = await getAlerts()
       setAlerts(a)
     } catch (e) {
-      setError('Error al carregar alertes')
+      setError('Error en carregar alertes')
       console.error('Error fetching data', e)
     } finally {
       setLoading(false)
     }
-  }, [showTreated])
+  }, [])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -65,21 +73,23 @@ export default function App() {
 
   const fugats = alerts.filter(a => a.segment === 'fugat')
   const noFugats = alerts.filter(a => a.segment !== 'fugat')
+  const tractades = noFugats.filter(a => a.tractada)
+  const pendents = noFugats.filter(a => !a.tractada)
 
-  const filtered = noFugats.filter(a => {
-    if (filterSegment.length && !filterSegment.includes(a.segment)) return false
-    if (filterTipus.length && !filterTipus.includes(a.tipus_alerta)) return false
-    if (filterUrgencia.length && !filterUrgencia.includes(a.urgencia)) return false
-    return true
-  })
+  const today = new Date()
 
   return (
     <div style={styles.container}>
       <Header activeTab={activeTab} onTabChange={setActiveTab} />
       <div style={styles.content}>
+        <div style={styles.headerSection}>
+          <h1 style={styles.title}>{TITLE[activeTab]}</h1>
+        </div>
+        <p style={styles.dateSub}>{formatDate(today)}</p>
+
         {error ? (
           <div style={styles.loading}>
-            <span style={{...styles.loadingText, color: '#E74C3C'}}>{error}</span>
+            <span style={{ ...styles.loadingText, color: '#E74C3C' }}>{error}</span>
           </div>
         ) : loading ? (
           <div style={styles.loading}>
@@ -89,19 +99,10 @@ export default function App() {
         ) : (
           <>
             {activeTab === 'briefing' && (
-              <>
-                <Filters
-                  filterSegment={filterSegment}
-                  filterTipus={filterTipus}
-                  filterUrgencia={filterUrgencia}
-                  showTreated={showTreated}
-                  onSegmentChange={setFilterSegment}
-                  onTipusChange={setFilterTipus}
-                  onUrgenciaChange={setFilterUrgencia}
-                  onShowTreatedChange={setShowTreated}
-                />
-                <AlertList alerts={filtered} loading={false} onToggleTreated={handleToggleTreated} />
-              </>
+              <AlertList alerts={pendents} loading={false} onToggleTreated={handleToggleTreated} listLabel="pendents" />
+            )}
+            {activeTab === 'tractades' && (
+              <AlertList alerts={tractades} loading={false} onToggleTreated={handleToggleTreated} listLabel="tractades" />
             )}
             {activeTab === 'fugats' && (
               <FugatsTab alerts={fugats} loading={false} onToggleTreated={handleToggleTreated} />
@@ -128,6 +129,25 @@ const styles: Record<string, React.CSSProperties> = {
     margin: '0 auto',
     padding: '0 32px 48px',
     flex: 1,
+  },
+  headerSection: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    paddingTop: 32,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: 700,
+    color: '#111827',
+    margin: 0,
+    letterSpacing: -0.5,
+  },
+  dateSub: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 4,
+    marginBottom: 24,
   },
   loading: {
     display: 'flex',

@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 interface Props {
   filterSegment: string[]
   filterTipus: string[]
@@ -13,101 +15,195 @@ const SEGMENTS = ['fidel', 'promiscu', 'marginal', 'en_risc', 'nou', 'perdut']
 const TIPUS = ['finestra_captura', 'risc_fuga', 'reposicio_endarrerida', 'reposicio_preventiva', 'reposicio_pendent', 'oportunitat_captura', 'monitoritzar', 'info']
 const URGENCIES = ['alta', 'mitjana', 'baixa']
 
+const LABEL_SEG: Record<string, string> = {
+  fidel: 'Fidel', promiscu: 'Promiscu', marginal: 'Marginal',
+  en_risc: 'En Risc', nou: 'Nou', perdut: 'Perdut',
+}
+const LABEL_TIPUS: Record<string, string> = {
+  finestra_captura: 'Finestra Captura', risc_fuga: 'Risc de Fuga',
+  reposicio_endarrerida: 'Rep. Endarrerida', reposicio_preventiva: 'Rep. Preventiva',
+  reposicio_pendent: 'Rep. Pendent', oportunitat_captura: 'Oport. Captura',
+  monitoritzar: 'Monitoritzar', info: 'Info',
+}
+
 export default function Filters(props: Props) {
+  const [open, setOpen] = useState(false)
+
+  const activeCount =
+    props.filterSegment.length + props.filterTipus.length + props.filterUrgencia.length
+
   return (
-    <div style={styles.bar}>
-      <div style={styles.group}>
-        <span style={styles.groupLabel}>Segment</span>
-        <div style={styles.chips}>
-          {SEGMENTS.map(s => (
-            <button
-              key={s}
-              style={{ ...styles.chip, ...(props.filterSegment.includes(s) ? styles.chipActive : {}) }}
-              onClick={() => {
-                const next = props.filterSegment.includes(s)
-                  ? props.filterSegment.filter(x => x !== s)
-                  : [...props.filterSegment, s]
-                props.onSegmentChange(next)
-              }}
-            >
-              {s}
+    <>
+      <button style={styles.filterBtn} onClick={() => setOpen(true)}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+        Filtres
+        {activeCount > 0 && <span style={styles.badge}>{activeCount}</span>}
+      </button>
+
+      {open && (
+        <div style={styles.overlay} onClick={() => setOpen(false)}>
+          <div style={styles.modal} onClick={e => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <span style={styles.modalTitle}>Filtres</span>
+              <button style={styles.closeBtn} onClick={() => setOpen(false)}>✕</button>
+            </div>
+
+            <div style={styles.section}>
+              <span style={styles.sectionLabel}>Segment</span>
+              <div style={styles.chips}>
+                {SEGMENTS.map(s => (
+                  <button
+                    key={s}
+                    style={{ ...styles.chip, ...(props.filterSegment.includes(s) ? styles.chipActive : {}) }}
+                    onClick={() => {
+                      const next = props.filterSegment.includes(s)
+                        ? props.filterSegment.filter(x => x !== s)
+                        : [...props.filterSegment, s]
+                      props.onSegmentChange(next)
+                    }}
+                  >
+                    {LABEL_SEG[s] || s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={styles.section}>
+              <span style={styles.sectionLabel}>Tipus</span>
+              <div style={styles.chips}>
+                {TIPUS.map(t => (
+                  <button
+                    key={t}
+                    style={{ ...styles.chip, ...(props.filterTipus.includes(t) ? styles.chipActive : {}) }}
+                    onClick={() => {
+                      const next = props.filterTipus.includes(t)
+                        ? props.filterTipus.filter(x => x !== t)
+                        : [...props.filterTipus, t]
+                      props.onTipusChange(next)
+                    }}
+                  >
+                    {LABEL_TIPUS[t] || t.replace(/_/g, ' ')}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={styles.section}>
+              <span style={styles.sectionLabel}>Urgència</span>
+              <div style={styles.chips}>
+                {URGENCIES.map(u => (
+                  <button
+                    key={u}
+                    style={{ ...styles.chip, ...(props.filterUrgencia.includes(u) ? styles.chipActive : {}) }}
+                    onClick={() => {
+                      const next = props.filterUrgencia.includes(u)
+                        ? props.filterUrgencia.filter(x => x !== u)
+                        : [...props.filterUrgencia, u]
+                      props.onUrgenciaChange(next)
+                    }}
+                  >
+                    {u}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={styles.section}>
+              <label style={styles.toggle}>
+                <input
+                  type="checkbox"
+                  checked={props.showTreated}
+                  onChange={e => props.onShowTreatedChange(e.target.checked)}
+                  style={styles.checkbox}
+                />
+                <span style={styles.toggleLabel}>Mostrar tractades</span>
+              </label>
+            </div>
+
+            <button style={styles.applyBtn} onClick={() => setOpen(false)}>
+              Aplicar
             </button>
-          ))}
+          </div>
         </div>
-      </div>
-      <div style={styles.group}>
-        <span style={styles.groupLabel}>Tipus</span>
-        <div style={styles.chips}>
-          {TIPUS.map(t => (
-            <button
-              key={t}
-              style={{ ...styles.chip, ...(props.filterTipus.includes(t) ? styles.chipActive : {}) }}
-              onClick={() => {
-                const next = props.filterTipus.includes(t)
-                  ? props.filterTipus.filter(x => x !== t)
-                  : [...props.filterTipus, t]
-                props.onTipusChange(next)
-              }}
-            >
-              {t.replace(/_/g, ' ')}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div style={styles.group}>
-        <span style={styles.groupLabel}>Urgència</span>
-        <div style={styles.chips}>
-          {URGENCIES.map(u => (
-            <button
-              key={u}
-              style={{ ...styles.chip, ...(props.filterUrgencia.includes(u) ? styles.chipActive : {}) }}
-              onClick={() => {
-                const next = props.filterUrgencia.includes(u)
-                  ? props.filterUrgencia.filter(x => x !== u)
-                  : [...props.filterUrgencia, u]
-                props.onUrgenciaChange(next)
-              }}
-            >
-              {u}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div style={styles.toggleGroup}>
-        <label style={styles.toggle}>
-          <input
-            type="checkbox"
-            checked={props.showTreated}
-            onChange={e => props.onShowTreatedChange(e.target.checked)}
-            style={styles.checkbox}
-          />
-          <span style={styles.toggleLabel}>Mostrar tractades</span>
-        </label>
-      </div>
-    </div>
+      )}
+    </>
   )
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  bar: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 16,
-    paddingTop: 16,
-    paddingBottom: 24,
+  filterBtn: {
+    background: '#FFFFFF',
+    border: '1px solid #D1D5DB',
+    color: '#374151',
+    fontSize: 13,
+    fontWeight: 500,
+    padding: '8px 16px',
+    cursor: 'pointer',
+    fontFamily: "'Inter', sans-serif",
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 8,
   },
-  group: {
+  badge: {
+    background: '#00B8A9',
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: 700,
+    width: 18,
+    height: 18,
     display: 'flex',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'center',
   },
-  groupLabel: {
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.4)',
+    backdropFilter: 'blur(4px)',
+    zIndex: 200,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modal: {
+    background: '#FFFFFF',
+    width: 440,
+    maxWidth: '90vw',
+    maxHeight: '80vh',
+    overflowY: 'auto' as const,
+    padding: 28,
+  },
+  modalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 700,
+    color: '#111827',
+  },
+  closeBtn: {
+    background: 'none',
+    border: 'none',
+    fontSize: 20,
+    color: '#6B7280',
+    cursor: 'pointer',
+    padding: 4,
+    lineHeight: 1,
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionLabel: {
+    display: 'block',
     fontSize: 10,
     fontWeight: 600,
     color: '#6B7280',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    minWidth: 60,
+    marginBottom: 8,
   },
   chips: {
     display: 'flex',
@@ -115,12 +211,12 @@ const styles: Record<string, React.CSSProperties> = {
     flexWrap: 'wrap' as const,
   },
   chip: {
-    background: '#FFFFFF',
+    background: '#F9FAFB',
     border: '1px solid #D1D5DB',
     color: '#6B7280',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 500,
-    padding: '4px 12px',
+    padding: '6px 14px',
     cursor: 'pointer',
     fontFamily: "'Inter', sans-serif",
     transition: 'all 0.1s',
@@ -129,12 +225,6 @@ const styles: Record<string, React.CSSProperties> = {
     background: '#00B8A9',
     border: '1px solid #00B8A9',
     color: '#FFFFFF',
-  },
-  toggleGroup: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-    paddingTop: 4,
   },
   toggle: {
     display: 'flex',
@@ -146,7 +236,19 @@ const styles: Record<string, React.CSSProperties> = {
     accentColor: '#00B8A9',
   },
   toggleLabel: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#374151',
+  },
+  applyBtn: {
+    background: '#00B8A9',
+    border: 'none',
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: 600,
+    padding: '10px 0',
+    cursor: 'pointer',
+    fontFamily: "'Inter', sans-serif",
+    width: '100%',
+    marginTop: 8,
   },
 }
