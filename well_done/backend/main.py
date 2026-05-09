@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database import init_db
-from routers import alerts, stats, treated, clients
+from backend.database import init_db
+from backend.routers import alerts, stats, treated, clients
 
 app = FastAPI(
     title="Smart Demand Signals — Inibsa",

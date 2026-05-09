@@ -7,7 +7,6 @@ interface Props {
 }
 
 export default function AlertCard({ alert, onToggleTreated }: Props) {
-  const isFugat = alert.segment === 'fugat'
   const prioColor = alert.prioritat >= 500 ? '#E76F51' : alert.prioritat >= 100 ? '#F4A261' : '#6B7280'
   const borderColor = alert.tipus_alerta === 'finestra_captura' ? '#00B8A9'
     : alert.tipus_alerta === 'risc_fuga' ? '#E76F51'

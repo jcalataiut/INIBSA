@@ -1,7 +1,7 @@
 import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
-from config import DATABASE_URL
+from backend.config import DATABASE_URL
 
 _engine: Engine | None = None
 
@@ -102,14 +102,19 @@ def is_db_empty() -> bool:
 
 def load_csv_to_db(csv_path: str):
     engine = get_engine()
-    df = pd.read_csv(csv_path, low_memory=False)
-    df.columns = [c.lower().replace(" ", "_").replace(".", "") for c in df.columns]
-    if "id_cliente" in df.columns:
-        df["id_cliente"] = df["id_cliente"].astype("Int64")
-    if "cod_postal" in df.columns:
-        df["cod_postal"] = df["cod_postal"].astype(str)
-    df.to_sql("ventas", engine, if_exists="append", index=False, method="multi")
-    return len(df)
+    total_len = 0
+    for df in pd.read_csv(csv_path, low_memory=False, chunksize=10000):
+        df.columns = [c.lower().replace(" ", "_").replace(".", "_") for c in df.columns]
+        if "id_cliente" in df.columns:
+            df["id_cliente"] = df["id_cliente"].astype("Int64")
+        if "cod_postal" in df.columns:
+            df["cod_postal"] = df["cod_postal"].astype(str)
+        for col in ["es_commodity", "es_devolucion", "en_campana"]:
+            if col in df.columns:
+                df[col] = df[col].astype(bool)
+        df.to_sql("ventas", engine, if_exists="append", index=False, chunksize=1000)
+        total_len += len(df)
+    return total_len
 
 def clear_cache(today: str):
     engine = get_engine()

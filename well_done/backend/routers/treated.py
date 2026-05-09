@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 from sqlalchemy import text
 from datetime import date
-from database import get_engine
-from models.schemas import AlertaTreatedIn, AlertaTreatedOut
+from backend.database import get_engine
+from backend.models.schemas import AlertaTreatedIn, AlertaTreatedOut
 
 router = APIRouter(prefix="/api/treated", tags=["treated"])
 

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Query
 from sqlalchemy import text
 from datetime import datetime
-from database import get_engine
-from models.schemas import StatsOut
+from backend.database import get_engine
+from backend.models.schemas import StatsOut
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
 

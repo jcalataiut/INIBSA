@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from sqlalchemy import text
-from database import get_engine
-from config import (
+from backend.database import get_engine
+from backend.config import (
     SHARE_FIDEL_THR, SHARE_MARGINAL_THR, DIES_FUGAT_THR, DIES_NOU_THR,
     DIES_HISTORIAL_MIN, RATIO_EN_RISC, NUM_INTERVALS_MIN,
     LLINDAR_GROC_STD, LLINDAR_TARONJA_STD, LLINDAR_VERMELL_STD,

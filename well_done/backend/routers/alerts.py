@@ -2,9 +2,9 @@ import pandas as pd
 from fastapi import APIRouter, Query
 from sqlalchemy import text
 from datetime import datetime
-from database import get_engine, clear_cache
-from engine.commodities_engine import run
-from models.schemas import AlertaOut
+from backend.database import get_engine, clear_cache
+from backend.engine.commodities_engine import run
+from backend.models.schemas import AlertaOut
 
 router = APIRouter(prefix="/api/alerts", tags=["alerts"])
 
