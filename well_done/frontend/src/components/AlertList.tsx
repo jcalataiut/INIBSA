@@ -28,9 +28,7 @@ export default function AlertList({ alerts, loading, onToggleTreated }: Props) {
 
   return (
     <div>
-      <div style={styles.count}>
-        {alerts.length} alertes
-      </div>
+      <div style={styles.count}>{alerts.length.toLocaleString()} ALERTES</div>
       <div>
         {alerts.map((a, i) => (
           <AlertCard key={`${a.id_cliente}_${a.familia_potencial}_${a.tipus_alerta}_${i}`} alert={a} onToggleTreated={onToggleTreated} />
@@ -46,7 +44,6 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: '50vh',
     padding: '80px 0',
     gap: 16,
   },
@@ -67,11 +64,9 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#6B7280',
   },
   count: {
-    fontSize: 11,
-    fontWeight: 600,
+    fontSize: 13,
+    fontWeight: 700,
     color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
     paddingBottom: 12,
   },
 }

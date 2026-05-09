@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { Alerta, Stats } from './types'
-import { getAlerts, getStats, markTreated, unmarkTreated, getTreated } from './api/client'
+import type { Alerta } from './types'
+import { getAlerts, markTreated, unmarkTreated, getTreated } from './api/client'
 import Header from './components/Header'
-import MetricsBar from './components/MetricsBar'
 import Filters from './components/Filters'
 import AlertList from './components/AlertList'
 import FugatsTab from './components/FugatsTab'
@@ -25,8 +24,8 @@ export default function App() {
   }, [])
 
   const [alerts, setAlerts] = useState<Alerta[]>([])
-  const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState<'briefing' | 'fugats'>('briefing')
 
   const [filterSegment, setFilterSegment] = useState<string[]>([])
@@ -37,13 +36,10 @@ export default function App() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const [a, s] = await Promise.all([
-        getAlerts({ pendents: !showTreated }),
-        getStats(),
-      ])
+      const a = await getAlerts({ pendents: !showTreated })
       setAlerts(a)
-      setStats(s)
     } catch (e) {
+      setError('Error al carregar alertes')
       console.error('Error fetching data', e)
     } finally {
       setLoading(false)
@@ -81,14 +77,17 @@ export default function App() {
     <div style={styles.container}>
       <Header activeTab={activeTab} onTabChange={setActiveTab} />
       <div style={styles.content}>
-        {loading ? (
+        {error ? (
+          <div style={styles.loading}>
+            <span style={{...styles.loadingText, color: '#E74C3C'}}>{error}</span>
+          </div>
+        ) : loading ? (
           <div style={styles.loading}>
             <div style={styles.spinner} />
             <span style={styles.loadingText}>Calculant alertes...</span>
           </div>
         ) : (
           <>
-            {stats && <MetricsBar stats={stats} />}
             {activeTab === 'briefing' && (
               <>
                 <Filters

@@ -31,9 +31,7 @@ export default function Header({ activeTab, onTabChange }: HeaderProps) {
             </button>
           </div>
         </div>
-        <div style={styles.right}>
-          <span style={styles.todayBadge}>Avui</span>
-        </div>
+        <div style={styles.right} />
       </div>
     </div>
   )
@@ -106,12 +104,4 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottom: '2px solid #00B8A9',
   },
   right: {},
-  todayBadge: {
-    background: '#00B8A9',
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: 600,
-    padding: '4px 14px',
-    letterSpacing: 0.5,
-  },
 }

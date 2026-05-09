@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime
 from sqlalchemy import text
 from backend.database import get_engine
 from backend.config import (
@@ -472,7 +472,6 @@ def generate_alerts(segments, today, provincia_map=None):
 
     alerts_df = pd.DataFrame(alerts)
 
-    abans = len(alerts_df)
     alerts_df = alerts_df[~(
         (alerts_df["dies_sense_compra"] > 730)
         & (alerts_df["num_intervals"] <= 2)

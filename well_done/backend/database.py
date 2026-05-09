@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from backend.config import DATABASE_URL
@@ -92,6 +93,15 @@ def init_db():
         conn.execute(text("""
             CREATE INDEX IF NOT EXISTS idx_cache_data ON alertes_cache(data_alerta)
         """))
+        conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_cache_cliente ON alertes_cache(id_cliente)
+        """))
+        conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_cache_prioritat ON alertes_cache(data_alerta, prioritat DESC)
+        """))
+        conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_treated_date ON treated_alerts(treated_date)
+        """))
 
 def is_db_empty() -> bool:
     engine = get_engine()
@@ -120,3 +130,52 @@ def clear_cache(today: str):
     engine = get_engine()
     with engine.begin() as conn:
         conn.execute(text("DELETE FROM alertes_cache WHERE data_alerta = :today"), {"today": today})
+
+COLS_CACHE = [
+    "id_cliente", "provincia", "familia_potencial", "segment",
+    "segment_anterior", "tipus_alerta", "urgencia", "canal",
+    "share_12m", "potencial_anual_eur", "euros_12m", "gap_eur",
+    "dies_sense_compra", "num_intervals", "cicle_mig_dies",
+    "cicle_std_dies", "dies_retard", "z_score",
+    "proxim_pedido_esperat", "dies_stock", "prioritat", "motiu",
+]
+
+def ensure_cache(today_str: str, family: str | None = None):
+    from backend.engine.commodities_engine import run
+    engine = get_engine()
+    with engine.connect() as conn:
+        cached = conn.execute(
+            text("SELECT COUNT(*) FROM alertes_cache WHERE data_alerta = :today"),
+            {"today": today_str}
+        ).scalar()
+    if cached > 0:
+        return
+    clear_cache(today_str)
+    try:
+        alerts_df, _ = run(today=today_str, verbose=False)
+    except Exception:
+        alerts_df = pd.DataFrame()
+    if alerts_df.empty:
+        return
+    alerts_df = alerts_df.replace({np.nan: None})
+    for c in COLS_CACHE:
+        if c not in alerts_df.columns:
+            alerts_df[c] = None
+    alerts_df["data_alerta"] = today_str
+    alerts_df[COLS_CACHE + ["data_alerta"]].to_sql(
+        "alertes_cache", engine, if_exists="append", index=False, method="multi"
+    )
+    active_keys = set(
+        f"{r['id_cliente']}_{r['familia_potencial']}_{r['tipus_alerta']}"
+        for _, r in alerts_df.iterrows()
+    )
+    with engine.begin() as conn:
+        existing = conn.execute(
+            text("SELECT client_familia_tipus FROM treated_alerts")
+        ).all()
+        to_remove = [row[0] for row in existing if row[0] not in active_keys]
+        if to_remove:
+            conn.execute(
+                text("DELETE FROM treated_alerts WHERE client_familia_tipus = ANY(:keys)"),
+                {"keys": to_remove}
+            )

@@ -1,9 +1,8 @@
 import pandas as pd
 import numpy as np
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query
 from sqlalchemy import text
-from backend.database import get_engine, clear_cache
-from backend.engine.commodities_engine import run
+from backend.database import get_engine, ensure_cache
 from backend.models.schemas import AlertaOut
 from backend.config import today_str
 
@@ -21,50 +20,10 @@ def get_treated_set(today: str) -> set:
 def make_cache_key(row) -> str:
     return f"{row['id_cliente']}_{row['familia_potencial']}_{row['tipus_alerta']}"
 
-def _ensure_cache(today_str: str, engine, family: str | None = None):
-    with engine.connect() as conn:
-        cached = conn.execute(
-            text("SELECT COUNT(*) FROM alertes_cache WHERE data_alerta = :today"),
-            {"today": today_str}
-        ).scalar()
-    if cached == 0:
-        clear_cache(today_str)
-        try:
-            alerts_df, _ = run(today=today_str, family=family, verbose=False)
-        except Exception:
-            alerts_df = pd.DataFrame()
-        if not alerts_df.empty:
-            alerts_df = alerts_df.replace({np.nan: None})
-            cols_to_save = [
-                "id_cliente", "provincia", "familia_potencial", "segment",
-                "segment_anterior", "tipus_alerta", "urgencia", "canal",
-                "share_12m", "potencial_anual_eur", "euros_12m", "gap_eur",
-                "dies_sense_compra", "num_intervals", "cicle_mig_dies",
-                "cicle_std_dies", "dies_retard", "z_score",
-                "proxim_pedido_esperat", "dies_stock", "prioritat", "motiu",
-            ]
-            for c in cols_to_save:
-                if c not in alerts_df.columns:
-                    alerts_df[c] = None
-            alerts_df["data_alerta"] = today_str
-            alerts_df[cols_to_save + ["data_alerta"]].to_sql(
-                "alertes_cache", engine, if_exists="append", index=False, method="multi"
-            )
-
-            active_keys = set(
-                f"{r['id_cliente']}_{r['familia_potencial']}_{r['tipus_alerta']}"
-                for _, r in alerts_df.iterrows()
-            )
-            with engine.begin() as conn:
-                existing = conn.execute(
-                    text("SELECT client_familia_tipus FROM treated_alerts")
-                ).all()
-                to_remove = [row[0] for row in existing if row[0] not in active_keys]
-                for k in to_remove:
-                    conn.execute(
-                        text("DELETE FROM treated_alerts WHERE client_familia_tipus = :key"),
-                        {"key": k}
-                    )
+def v(val, default=None):
+    if val is None or (isinstance(val, float) and np.isnan(val)):
+        return default
+    return val
 
 @router.get("")
 def get_alerts(
@@ -78,7 +37,7 @@ def get_alerts(
     engine = get_engine()
     today_str = today if isinstance(today, str) else today.strftime("%Y-%m-%d")
 
-    _ensure_cache(today_str, engine, family)
+    ensure_cache(today_str)
 
     treated_set = get_treated_set(today_str)
 
@@ -100,7 +59,7 @@ def get_alerts(
     query += " ORDER BY prioritat DESC NULLS LAST"
 
     df = pd.read_sql(text(query), engine, params=params)
-    df = df.replace({np.nan: None})
+    df = df.replace({np.nan: None, pd.NA: None})
 
     alerts = []
     for _, row in df.iterrows():
@@ -113,20 +72,20 @@ def get_alerts(
             tipus_alerta=row["tipus_alerta"],
             urgencia=row["urgencia"],
             canal=row["canal"],
-            share_12m=float(row["share_12m"] or 0),
-            potencial_anual_eur=float(row["potencial_anual_eur"] or 0),
-            euros_12m=float(row["euros_12m"] or 0),
-            gap_eur=float(row["gap_eur"] or 0),
-            dies_sense_compra=int(row["dies_sense_compra"] or 0),
-            num_intervals=int(row["num_intervals"] or 0),
-            cicle_mig_dies=float(row["cicle_mig_dies"]) if row.get("cicle_mig_dies") else None,
-            cicle_std_dies=float(row["cicle_std_dies"]) if row.get("cicle_std_dies") else None,
-            dies_retard=int(row["dies_retard"] or 0),
-            z_score=float(row["z_score"]) if row.get("z_score") else None,
-            proxim_pedido_esperat=row.get("proxim_pedido_esperat"),
-            dies_stock=float(row["dies_stock"]) if row.get("dies_stock") else None,
-            prioritat=float(row["prioritat"] or 0),
-            motiu=row["motiu"] or "",
+            share_12m=float(v(row["share_12m"], 0)),
+            potencial_anual_eur=float(v(row["potencial_anual_eur"], 0)),
+            euros_12m=float(v(row["euros_12m"], 0)),
+            gap_eur=float(v(row["gap_eur"], 0)),
+            dies_sense_compra=int(v(row["dies_sense_compra"], 0)),
+            num_intervals=int(v(row["num_intervals"], 0)),
+            cicle_mig_dies=float(v(row["cicle_mig_dies"])) if v(row["cicle_mig_dies"]) is not None else None,
+            cicle_std_dies=float(v(row["cicle_std_dies"])) if v(row["cicle_std_dies"]) is not None else None,
+            dies_retard=int(v(row["dies_retard"], 0)),
+            z_score=float(v(row["z_score"])) if v(row["z_score"]) is not None else None,
+            proxim_pedido_esperat=v(row["proxim_pedido_esperat"]),
+            dies_stock=float(v(row["dies_stock"])) if v(row["dies_stock"]) is not None else None,
+            prioritat=float(v(row["prioritat"], 0)),
+            motiu=v(row["motiu"]) or "",
             data_alerta=str(row["data_alerta"]),
             tractada=key in treated_set,
         )

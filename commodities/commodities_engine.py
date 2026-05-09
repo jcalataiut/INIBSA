@@ -26,7 +26,7 @@ import pandas as pd
 import numpy as np
 import sys
 import argparse
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # =============================================================================
 # CONFIGURACIÓ — Llindars de negoci ajustables
