@@ -37,6 +37,8 @@ export default function Header({ today, onTodayChange, activeTab, onTabChange }:
           <input
             type="date"
             value={today}
+            min="2021-01-04"
+            max="2025-12-29"
             onChange={e => onTodayChange(e.target.value)}
             style={styles.dateInput}
           />

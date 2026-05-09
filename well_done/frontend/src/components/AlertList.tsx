@@ -46,6 +46,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: '50vh',
     padding: '80px 0',
     gap: 16,
   },

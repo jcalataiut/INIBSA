@@ -86,19 +86,21 @@ export default function App() {
     <div style={styles.container}>
       <Header today={today} onTodayChange={setToday} activeTab={activeTab} onTabChange={setActiveTab} />
       <div style={styles.content}>
-        {stats && <MetricsBar stats={stats} />}
+        {!loading && stats && <MetricsBar stats={stats} />}
         {activeTab === 'briefing' && (
           <>
-            <Filters
-              filterSegment={filterSegment}
-              filterTipus={filterTipus}
-              filterUrgencia={filterUrgencia}
-              showTreated={showTreated}
-              onSegmentChange={setFilterSegment}
-              onTipusChange={setFilterTipus}
-              onUrgenciaChange={setFilterUrgencia}
-              onShowTreatedChange={setShowTreated}
-            />
+            {!loading && (
+              <Filters
+                filterSegment={filterSegment}
+                filterTipus={filterTipus}
+                filterUrgencia={filterUrgencia}
+                showTreated={showTreated}
+                onSegmentChange={setFilterSegment}
+                onTipusChange={setFilterTipus}
+                onUrgenciaChange={setFilterUrgencia}
+                onShowTreatedChange={setShowTreated}
+              />
+            )}
             <AlertList alerts={filtered} loading={loading} onToggleTreated={handleToggleTreated} />
           </>
         )}

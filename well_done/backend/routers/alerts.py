@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from sqlalchemy import text
 from datetime import datetime
 from backend.database import get_engine, clear_cache
@@ -21,27 +21,18 @@ def get_treated_set(today: str) -> set:
 def make_cache_key(row) -> str:
     return f"{row['id_cliente']}_{row['familia_potencial']}_{row['tipus_alerta']}"
 
-@router.get("")
-def get_alerts(
-    today: str = Query(default_factory=lambda: datetime.now().strftime("%Y-%m-%d")),
-    family: str | None = Query(None),
-    segment: str | None = Query(None),
-    tipus: str | None = Query(None),
-    urgencia: str | None = Query(None),
-    pendents: bool = Query(False),
-):
-    engine = get_engine()
-    today_str = today if isinstance(today, str) else today.strftime("%Y-%m-%d")
-
+def _ensure_cache(today_str: str, engine, family: str | None = None):
     with engine.connect() as conn:
         cached = conn.execute(
             text("SELECT COUNT(*) FROM alertes_cache WHERE data_alerta = :today"),
             {"today": today_str}
         ).scalar()
-
     if cached == 0:
         clear_cache(today_str)
-        alerts_df, _ = run(today=today_str, family=family, verbose=False)
+        try:
+            alerts_df, _ = run(today=today_str, family=family, verbose=False)
+        except Exception:
+            alerts_df = pd.DataFrame()
         if not alerts_df.empty:
             alerts_df = alerts_df.replace({np.nan: None})
             cols_to_save = [
@@ -59,6 +50,20 @@ def get_alerts(
             alerts_df[cols_to_save + ["data_alerta"]].to_sql(
                 "alertes_cache", engine, if_exists="append", index=False, method="multi"
             )
+
+@router.get("")
+def get_alerts(
+    today: str = Query(default_factory=lambda: datetime.now().strftime("%Y-%m-%d")),
+    family: str | None = Query(None),
+    segment: str | None = Query(None),
+    tipus: str | None = Query(None),
+    urgencia: str | None = Query(None),
+    pendents: bool = Query(False),
+):
+    engine = get_engine()
+    today_str = today if isinstance(today, str) else today.strftime("%Y-%m-%d")
+
+    _ensure_cache(today_str, engine, family)
 
     treated_set = get_treated_set(today_str)
 
