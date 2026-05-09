@@ -4,7 +4,7 @@ import numpy as np
 # =============================================================================
 # BUILD MASTER DATASET
 # Une ventas con productos, clientes, potencial y campañas en una sola tabla.
-# Output: master_with_ids.csv  (162.546 filas, una por línea de venta)
+# Output: data/master_commodities.csv + data/master_technicals.csv
 #
 # COLUMNAS QUE SON IDs — dropear antes de meter en cualquier modelo:
 #   Num.Fact    → ID de factura (agrupa líneas de un mismo pedido)
@@ -18,7 +18,7 @@ print("📦 Loading raw data...")
 ventas    = pd.read_csv('data/raw/Datasets.xlsx - Ventas.csv', low_memory=False)
 clientes  = pd.read_csv('data/raw/Datasets.xlsx - Clientes.csv')
 productos = pd.read_csv('data/raw/Datasets.xlsx - Productos.csv')
-potencial = pd.read_csv('data/raw/Datasets.xlsx - Potencial.csv')
+potencial = pd.read_csv('data/raw/Datasets.xlsx - Potencial.csv')  # v2: Biomaterials corregit Categoria C2 → T1
 campanas  = pd.read_csv('data/raw/Datasets.xlsx - Campañas.csv')
 
 # ── 1. PARSEO Y LIMPIEZA DE COLUMNAS RAW ────────────────────────────────────
@@ -109,11 +109,11 @@ familia_map = {
 df['Familia_Potencial'] = df['Familia_H'].map(familia_map)
 
 potencial_slim = potencial[['Id_Cliente', 'Familia', 'Potencial_H']].rename(
-    columns={'Familia': 'Familia_Potencial', 'Potencial_H': 'Potencial_EUR'}
+    columns={'Familia': 'Familia_Potencial', 'Potencial_H': 'Potencial_EUR_anual'}  # _anual: és gasto anual estimat
 )
 
 df = df.merge(potencial_slim, on=['Id_Cliente', 'Familia_Potencial'], how='left')
-print(f"  Cobertura potencial: {df['Potencial_EUR'].notna().sum():,} / {len(df):,} filas")
+print(f"  Cobertura potencial: {df['Potencial_EUR_anual'].notna().sum():,} / {len(df):,} filas")
 assert len(df) == len(ventas), f"Join potencial multiplicó filas: {len(df)} vs {len(ventas)}"
 
 # ── 7. FEATURES TEMPORALES ───────────────────────────────────────────────────
@@ -127,43 +127,43 @@ df['dia_anyo']   = df['Fecha'].dt.dayofyear
 # ── 8. ORDEN FINAL DE COLUMNAS ────────────────────────────────────────────────
 df = df[[
     # ── IDs — dropear antes de cualquier modelo ──────────────────────────────
-    'Num.Fact',          # ID de factura (agrupa líneas del mismo pedido)
-    'Fecha',             # fecha exacta — usar features de tiempo en su lugar
-    'Id_Cliente',        # ID clínica dental
-    'Id_Producto',       # ID producto
+    'Num.Fact',            # ID de factura (agrupa líneas del mismo pedido)
+    'Fecha',               # fecha exacta — usar features de tiempo en su lugar
+    'Id_Cliente',          # ID clínica dental
+    'Id_Producto',         # ID producto
     # ── Info producto ────────────────────────────────────────────────────────
-    'Bloque_Analitico',  # 'Commodities' | 'Productos Técnicos'
-    'Categoria_H',       # categoría anonimizada: C1, C2, T1
-    'Familia_H',         # familia anonimizada: C1, C2, T1, T2
-    'Familia_Potencial', # familia real mapeada: Anestesia | Bioseguridad | Biomateriales
-    'es_commodity',      # 1 = commodity, 0 = técnico
+    'Bloque_Analitico',    # 'Commodities' | 'Productos Técnicos'
+    'Categoria_H',         # categoría anonimizada: C1, C2, T1
+    'Familia_H',           # familia anonimizada: C1, C2, T1, T2
+    'Familia_Potencial',   # familia real mapeada: Anestesia | Bioseguridad | Biomateriales
+    'es_commodity',        # 1 = commodity, 0 = técnico
     # ── Info cliente ─────────────────────────────────────────────────────────
-    'Cod_Postal',        # código postal (NaN en 623 clientes no encontrados en maestro)
-    'Provincia',         # provincia española
+    'Cod_Postal',          # código postal (NaN en 623 clientes no encontrados en maestro)
+    'Provincia',           # provincia española
     # ── Transacción ──────────────────────────────────────────────────────────
-    'Unidades',          # cantidad (negativo = devolución)
-    'Valores_H',         # importe EUR (anonimizado en escala pero real)
-    'es_devolucion',     # 1 si Unidades < 0
-    'en_campana',        # 1 si la venta cae dentro de una campaña promocional
+    'Unidades',            # cantidad (negativo = devolución)
+    'Valores_H',           # importe EUR (anonimizado en escala pero real)
+    'es_devolucion',       # 1 si Unidades < 0
+    'en_campana',          # 1 si la venta cae dentro de una campaña promocional
     # ── Potencial de mercado ─────────────────────────────────────────────────
-    'Potencial_EUR',     # gasto estimado anual de la clínica en esa familia
+    'Potencial_EUR_anual', # gasto ANUAL estimado de la clínica en esa familia
     # ── Features temporales — usar estas en modelo, no Fecha ─────────────────
     'anyo',
     'mes',
     'trimestre',
-    'dia_semana',        # 0 = lunes
+    'dia_semana',          # 0 = lunes
     'dia_anyo',
 ]]
 
-# ── 9. SAVE ───────────────────────────────────────────────────────────────────
+# ── 9. SAVE — separat per bloc analític ──────────────────────────────────────
 df_commodities = df[df['es_commodity'] == 1].copy()
-df_technicals = df[df['es_commodity'] == 0].copy()
+df_technicals  = df[df['es_commodity'] == 0].copy()
 
 df_commodities.to_csv('data/master_commodities.csv', index=False)
-df_technicals.to_csv('data/master_technicals.csv', index=False)
+df_technicals.to_csv('data/master_technicals.csv',   index=False)
 
-print(f"\n✅ DONE — Separated into 2 datasets:")
-print(f"  - master_commodities.csv: {df_commodities.shape[0]:,} filas")
-print(f"  - master_technicals.csv: {df_technicals.shape[0]:,} filas")
-print(f"\n  Para modelo: df.drop(columns=['Num.Fact', 'Fecha', 'Id_Cliente', 'Id_Producto'])")
+print(f"\n✅ DONE — Separats en 2 datasets:")
+print(f"  master_commodities.csv : {df_commodities.shape[0]:,} files × {df_commodities.shape[1]} columnes")
+print(f"  master_technicals.csv  : {df_technicals.shape[0]:,} files × {df_technicals.shape[1]} columnes")
+print(f"\n  Per model: df.drop(columns=['Num.Fact', 'Fecha', 'Id_Cliente', 'Id_Producto'])")
 print(f"\n{df.dtypes}")

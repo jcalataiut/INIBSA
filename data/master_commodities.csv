@@ -1,4 +1,4 @@
-Num.Fact,Fecha,Id_Cliente,Id_Producto,Bloque_Analitico,Categoria_H,Familia_H,Familia_Potencial,es_commodity,Cod_Postal,Provincia,Unidades,Valores_H,es_devolucion,en_campana,Potencial_EUR,anyo,mes,trimestre,dia_semana,dia_anyo
+Num.Fact,Fecha,Id_Cliente,Id_Producto,Bloque_Analitico,Categoria_H,Familia_H,Familia_Potencial,es_commodity,Cod_Postal,Provincia,Unidades,Valores_H,es_devolucion,en_campana,Potencial_EUR_anual,anyo,mes,trimestre,dia_semana,dia_anyo
 3810000197,2024-01-03,1000078762,4566,Commodities,Categoria C1,Familia C1,Anestesia,1,38400.0,Sta.Cruz Tenerife,-1,-141.93,1,0,1802.36,2024,1,1,2,3
 3810000198,2024-01-12,1000077124,3408,Commodities,Categoria C1,Familia C1,Anestesia,1,35007.0,Las Palmas,-10,-634.15,1,0,3410.04,2024,1,1,4,12
 3810000200,2024-02-23,27995,4911,Commodities,Categoria C2,Familia C2,Bioseguridad,1,35110.0,Las Palmas,-60,-3931.91,1,0,2223.12,2024,2,1,4,54

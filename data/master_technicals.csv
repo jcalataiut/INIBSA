@@ -1,4 +1,4 @@
-Num.Fact,Fecha,Id_Cliente,Id_Producto,Bloque_Analitico,Categoria_H,Familia_H,Familia_Potencial,es_commodity,Cod_Postal,Provincia,Unidades,Valores_H,es_devolucion,en_campana,Potencial_EUR,anyo,mes,trimestre,dia_semana,dia_anyo
+Num.Fact,Fecha,Id_Cliente,Id_Producto,Bloque_Analitico,Categoria_H,Familia_H,Familia_Potencial,es_commodity,Cod_Postal,Provincia,Unidades,Valores_H,es_devolucion,en_campana,Potencial_EUR_anual,anyo,mes,trimestre,dia_semana,dia_anyo
 3810000198,2024-01-12,1000077124,5099,Productos Técnicos,Categoria T1,Familia T1,Biomateriales,0,35007.0,Las Palmas,-1,-329.32,1,0,9247.3,2024,1,1,4,12
 3810000201,2024-03-22,35333,5099,Productos Técnicos,Categoria T1,Familia T1,Biomateriales,0,35006.0,Las Palmas,-4,-1142.11,1,0,27741.9,2024,3,1,4,82
 3810000206,2024-05-16,6208,5100,Productos Técnicos,Categoria T1,Familia T1,Biomateriales,0,38300.0,Sta.Cruz Tenerife,-3,-568.09,1,0,18494.6,2024,5,2,3,137
