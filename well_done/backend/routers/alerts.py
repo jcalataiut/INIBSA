@@ -2,10 +2,10 @@ import pandas as pd
 import numpy as np
 from fastapi import APIRouter, Query, HTTPException
 from sqlalchemy import text
-from datetime import datetime
 from backend.database import get_engine, clear_cache
 from backend.engine.commodities_engine import run
 from backend.models.schemas import AlertaOut
+from backend.config import today_str
 
 router = APIRouter(prefix="/api/alerts", tags=["alerts"])
 
@@ -51,9 +51,24 @@ def _ensure_cache(today_str: str, engine, family: str | None = None):
                 "alertes_cache", engine, if_exists="append", index=False, method="multi"
             )
 
+            active_keys = set(
+                f"{r['id_cliente']}_{r['familia_potencial']}_{r['tipus_alerta']}"
+                for _, r in alerts_df.iterrows()
+            )
+            with engine.begin() as conn:
+                existing = conn.execute(
+                    text("SELECT client_familia_tipus FROM treated_alerts")
+                ).all()
+                to_remove = [row[0] for row in existing if row[0] not in active_keys]
+                for k in to_remove:
+                    conn.execute(
+                        text("DELETE FROM treated_alerts WHERE client_familia_tipus = :key"),
+                        {"key": k}
+                    )
+
 @router.get("")
 def get_alerts(
-    today: str = Query(default_factory=lambda: datetime.now().strftime("%Y-%m-%d")),
+    today: str = Query(default_factory=today_str),
     family: str | None = Query(None),
     segment: str | None = Query(None),
     tipus: str | None = Query(None),

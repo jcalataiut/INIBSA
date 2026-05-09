@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 from sqlalchemy import text
-from datetime import date
 from backend.database import get_engine
 from backend.models.schemas import AlertaTreatedIn, AlertaTreatedOut
+from backend.config import today_str
 
 router = APIRouter(prefix="/api/treated", tags=["treated"])
 
@@ -39,7 +39,7 @@ def mark_treated(item: AlertaTreatedIn):
                 VALUES (:key, :cli, :fam, :tip, :today)
                 ON CONFLICT (client_familia_tipus) DO UPDATE SET treated_date = :today
             """),
-            {"key": key, "cli": item.id_cliente, "fam": item.familia_potencial, "tip": item.tipus_alerta, "today": date.today()}
+            {"key": key, "cli": item.id_cliente, "fam": item.familia_potencial, "tip": item.tipus_alerta, "today": today_str()}
         )
     return {"status": "ok", "key": key}
 

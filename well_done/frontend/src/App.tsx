@@ -14,7 +14,6 @@ const globalStyles = `
   ::-webkit-scrollbar-track { background: #F3F4F6; }
   ::-webkit-scrollbar-thumb { background: #D1D5DB; }
   ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
-  input[type="date"]::-webkit-calendar-picker-indicator { filter: none; cursor: pointer; }
   @keyframes spin { to { transform: rotate(360deg); } }
 `
 
@@ -25,10 +24,6 @@ export default function App() {
     document.head.appendChild(style)
   }, [])
 
-  const [today, setToday] = useState(() => {
-    const d = new Date()
-    return d.toISOString().split('T')[0]
-  })
   const [alerts, setAlerts] = useState<Alerta[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -43,8 +38,8 @@ export default function App() {
     setLoading(true)
     try {
       const [a, s] = await Promise.all([
-        getAlerts({ today, pendents: !showTreated }),
-        getStats(today),
+        getAlerts({ pendents: !showTreated }),
+        getStats(),
       ])
       setAlerts(a)
       setStats(s)
@@ -53,7 +48,7 @@ export default function App() {
     } finally {
       setLoading(false)
     }
-  }, [today, showTreated])
+  }, [showTreated])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -84,23 +79,21 @@ export default function App() {
 
   return (
     <div style={styles.container}>
-      <Header today={today} onTodayChange={setToday} activeTab={activeTab} onTabChange={setActiveTab} />
+      <Header activeTab={activeTab} onTabChange={setActiveTab} />
       <div style={styles.content}>
-        {!loading && stats && <MetricsBar stats={stats} />}
+        {stats && <MetricsBar stats={stats} />}
         {activeTab === 'briefing' && (
           <>
-            {!loading && (
-              <Filters
-                filterSegment={filterSegment}
-                filterTipus={filterTipus}
-                filterUrgencia={filterUrgencia}
-                showTreated={showTreated}
-                onSegmentChange={setFilterSegment}
-                onTipusChange={setFilterTipus}
-                onUrgenciaChange={setFilterUrgencia}
-                onShowTreatedChange={setShowTreated}
-              />
-            )}
+            <Filters
+              filterSegment={filterSegment}
+              filterTipus={filterTipus}
+              filterUrgencia={filterUrgencia}
+              showTreated={showTreated}
+              onSegmentChange={setFilterSegment}
+              onTipusChange={setFilterTipus}
+              onUrgenciaChange={setFilterUrgencia}
+              onShowTreatedChange={setShowTreated}
+            />
             <AlertList alerts={filtered} loading={loading} onToggleTreated={handleToggleTreated} />
           </>
         )}

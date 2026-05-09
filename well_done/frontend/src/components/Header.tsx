@@ -1,11 +1,9 @@
 interface HeaderProps {
-  today: string
-  onTodayChange: (d: string) => void
   activeTab: 'briefing' | 'fugats'
   onTabChange: (t: 'briefing' | 'fugats') => void
 }
 
-export default function Header({ today, onTodayChange, activeTab, onTabChange }: HeaderProps) {
+export default function Header({ activeTab, onTabChange }: HeaderProps) {
   return (
     <div style={styles.wrapper}>
       <div style={styles.inner}>
@@ -34,14 +32,7 @@ export default function Header({ today, onTodayChange, activeTab, onTabChange }:
           </div>
         </div>
         <div style={styles.right}>
-          <input
-            type="date"
-            value={today}
-            min="2021-01-04"
-            max="2025-12-29"
-            onChange={e => onTodayChange(e.target.value)}
-            style={styles.dateInput}
-          />
+          <span style={styles.todayBadge}>Avui</span>
         </div>
       </div>
     </div>
@@ -115,13 +106,12 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottom: '2px solid #00B8A9',
   },
   right: {},
-  dateInput: {
-    background: '#F9FAFB',
-    border: '1px solid #D1D5DB',
-    color: '#111827',
-    padding: '8px 12px',
-    fontSize: 13,
-    fontFamily: "'Inter', sans-serif",
-    outline: 'none',
+  todayBadge: {
+    background: '#00B8A9',
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: 600,
+    padding: '4px 14px',
+    letterSpacing: 0.5,
   },
 }
