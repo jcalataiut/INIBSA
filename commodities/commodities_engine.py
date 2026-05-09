@@ -53,7 +53,12 @@ NUM_INTERVALS_MIN = 3         # cal ≥ 3 intervals per tenir patró fiable
 LLINDAR_GROC_STD = 0.0        # qualsevol retard → alerta de reposició
 LLINDAR_TARONJA_STD = 1.5     # > 1.5σ → risc moderat
 LLINDAR_VERMELL_STD = 2.5     # > 2.5σ → risc alt de fuga
-FINESTRA_CAPTURA_DIES = 3     # ±3 dies al voltant del proper pedido esperat (captura promiscus)
+# Finestra de captura: relativa al cicle (min 3 dies, max 14 dies)
+# Un client amb cicle de 30d té finestra de ±3d (10% del cicle)
+# Un client amb cicle de 180d té finestra de ±14d (8% del cicle)
+FINESTRA_CAPTURA_PCT = 0.10   # percentatge del cicle per la finestra
+FINESTRA_CAPTURA_MIN = 3      # mínim 3 dies
+FINESTRA_CAPTURA_MAX = 14     # màxim 14 dies
 
 
 # =============================================================================
@@ -337,19 +342,26 @@ def generate_alerts(segments, today, provincia_map=None, verbose=False):
         'nou': 0.4,
     }
 
-    def calc_prioritat(gap, dies_retard, cicle_mig, prob):
+    def calc_prioritat(gap, dies_retard, cicle_mig, prob, dies_stock=None):
         """prioritat = gap × urgència × prob (README §5.4)
 
-        urgència_temporal = max(0.1, min(1.0, dies_retard / cicle_mig))
-        La urgència es capa a 1.0: un client amb retard ≥ 1 cicle ja té
-        la màxima urgència. Més retard no incrementa l'acció immediata.
+        urgència_temporal = màxim entre:
+          - retard / cicle_mig (tradicional)
+          - 1 - dies_stock/14 (stock sota mínims) — per fidels
         """
+        # Urgència per retard
         if cicle_mig and cicle_mig > 0 and not pd.isna(cicle_mig):
             cicle_segur = max(14, cicle_mig)
-            urgencia = max(0.1, min(1.0, dies_retard / cicle_segur))
+            urgencia_retard = max(0.1, min(1.0, dies_retard / cicle_segur))
         else:
-            urgencia = 0.5
-        return round(gap * urgencia * prob, 2)
+            urgencia_retard = 0.5
+
+        # Urgència per stock (només per fidels)
+        urgencia_stock = 0
+        if dies_stock is not None and dies_stock < 14:
+            urgencia_stock = max(0, 1 - dies_stock / 14)
+
+        return round(gap * max(urgencia_retard, urgencia_stock) * prob, 2)
 
     for _, row in segments.iterrows():
         alert = {
@@ -522,7 +534,41 @@ def generate_alerts(segments, today, provincia_map=None, verbose=False):
         alert['cicle_mig_dies'] = round(cicle_mig, 1)
         alert['proxim_pedido_esperat'] = proper_pedido.strftime('%Y-%m-%d')
 
+        # ── Dies fins al proper pedido esperat (stock estimat) ──────────────
+        # Negatiu = ja ha passat la data prevista (retard)
+        # Positiu = quants dies falten per al proper pedido
+        alert['dies_stock'] = None
+        if segment == 'fidel' and cicle_mig and not pd.isna(cicle_mig):
+            dies_per_proper = max(0, (proper_pedido - today_ts).days)
+            alert['dies_stock'] = round(dies_per_proper, 1)
+
+        dies_stock = alert['dies_stock']
+
         if segment == 'fidel':
+            # Stock baix: proper pedido esperat dins dels pròxims 7 dies
+            if dies_retard == 0 and dies_stock is not None and dies_stock < 7:
+                alert['tipus_alerta'] = 'reposicio_preventiva'
+                alert['dies_stock'] = f"{dies_stock:.0f} dies"
+                if dies_stock < 3:
+                    alert['urgencia'] = 'alta'
+                    alert['canal'] = 'delegat'
+                else:
+                    alert['urgencia'] = 'baixa'
+                    alert['canal'] = 'televenda'
+                alert['prioritat'] = calc_prioritat(
+                    alert['gap_eur'], dies_retard, cicle_mig, PROB_CONVERSIO['fidel'],
+                    dies_stock=dies_stock
+                )
+                alert['motiu'] = (
+                    f"Client FIDEL d'{row['Familia_Potencial']}. "
+                    f"Proper pedido estimat dins de {dies_stock:.0f} dies "
+                    f"(cicle habitual: {cicle_mig:.0f} dies). "
+                    f"Stock estimat proper a l'esgotament. "
+                    f"Contactar per anticipar reposició."
+                )
+                alerts.append(alert)
+                continue
+
             if dies_retard > 0:
                 if z_score >= LLINDAR_VERMELL_STD:
                     alert['tipus_alerta'] = 'risc_fuga'
@@ -532,7 +578,8 @@ def generate_alerts(segments, today, provincia_map=None, verbose=False):
                         f"Client FIDEL d'{row['Familia_Potencial']} amb risc de FUGA. "
                         f"Cicle habitual: {cicle_mig:.0f} dies. Porta {dies_sense} dies "
                         f"sense comprar ({dies_retard} dies de retard, z={z_score:.1f}). "
-                        f"Prioritat màxima."
+                        + (f"Stock exhaurit. " if dies_stock is not None and dies_stock <= 0 else "")
+                        + f"Prioritat màxima."
                     )
                 elif z_score >= LLINDAR_TARONJA_STD:
                     alert['tipus_alerta'] = 'reposicio_endarrerida'
@@ -541,7 +588,9 @@ def generate_alerts(segments, today, provincia_map=None, verbose=False):
                     alert['motiu'] = (
                         f"Client FIDEL d'{row['Familia_Potencial']} amb reposició endarrerida. "
                         f"Cicle habitual: {cicle_mig:.0f} dies. Retard de {dies_retard} dies "
-                        f"(z={z_score:.1f}). Contactar per confirmar estat."
+                        f"(z={z_score:.1f}). "
+                        + (f"Proper pedido esperat fa {dies_retard} dies. " if dies_stock is not None else "")
+                        + f"Contactar per confirmar estat."
                     )
                 else:  # groc
                     alert['tipus_alerta'] = 'reposicio_pendent'
@@ -550,18 +599,22 @@ def generate_alerts(segments, today, provincia_map=None, verbose=False):
                     alert['motiu'] = (
                         f"Client FIDEL d'{row['Familia_Potencial']} amb lleuger retard "
                         f"({dies_retard} dies). Cicle habitual: {cicle_mig:.0f} dies. "
-                        f"Seguiment rutina."
+                        + (f"Proper pedido: {dies_stock:.0f} dies enrere. " if dies_stock is not None else "")
+                        + f"Seguiment rutina."
                     )
                 alert['prioritat'] = calc_prioritat(
-                    alert['gap_eur'], dies_retard, cicle_mig, PROB_CONVERSIO['fidel']
+                    alert['gap_eur'], dies_retard, cicle_mig, PROB_CONVERSIO['fidel'],
+                    dies_stock=dies_stock
                 )
                 alerts.append(alert)
             # tot normal, no cal alerta
 
         elif segment == 'promiscu':
             dies_restants = -dies_retard  # negatiu = encara no ha passat el proper pedido
-            if abs(dies_restants) <= FINESTRA_CAPTURA_DIES or dies_retard > 0:
+            finestra = max(FINESTRA_CAPTURA_MIN, min(FINESTRA_CAPTURA_MAX, round(cicle_mig * FINESTRA_CAPTURA_PCT)))
+            if abs(dies_restants) <= finestra or dies_retard > 0:
                 alert['tipus_alerta'] = 'finestra_captura'
+                alert['finestra_captura_dies'] = finestra
                 alert['canal'] = 'delegat'
                 if dies_retard > 0:
                     alert['urgencia'] = 'alta'

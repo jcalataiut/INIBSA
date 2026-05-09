@@ -140,7 +140,10 @@ with tab1:
                     cseg = COLOR_SEG.get(a['segment'], '#999')
                     st.markdown(f'<span style="background:{cseg};color:white;padding:2px 8px;border-radius:8px;font-size:11px;">{a["segment"]}</span><br><span style="font-size:11px;">share {a["share_12m"]:.0%}</span>', unsafe_allow_html=True)
                 with cols[3]:
-                    st.markdown(f'**{a["gap_eur"]:,.0f}€**<br><span style="font-size:11px;">gap</span>', unsafe_allow_html=True)
+                    stock_info = ''
+                    if pd.notna(a.get('dies_stock')) and a['dies_stock'] is not None:
+                        stock_info = f'<br><span style="font-size:10px;color:#e67e22;">📦 stock: {a["dies_stock"]}</span>'
+                    st.markdown(f'**{a["gap_eur"]:,.0f}€**<br><span style="font-size:11px;">gap</span>{stock_info}', unsafe_allow_html=True)
                 with cols[4]:
                     st.markdown(f'**{a["dies_sense_compra"]}d**<br><span style="font-size:11px;">sense compra</span>', unsafe_allow_html=True)
                 with cols[5]:
