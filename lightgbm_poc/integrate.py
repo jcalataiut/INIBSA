@@ -1,256 +1,266 @@
 """
 Integració: Segmentació (share of wallet) + LightGBM (timing).
- 
-QUI → Segment (FIDEL/PROMISCU/MARGINAL/EN_RISC) basat en share_of_wallet
-QUAN → Corba de probabilitat LightGBM → finestra de confiança
- 
-Output: alertes combinades amb prioritat final.
+
+Lògica unificada per TOT client commodity:
+  1. LightGBM → corba P(h) → finestra de confiança RELATIVA al màxim assolit
+  2. Alerta si avui > p90_rel (límit superior de la finestra)
+  3. Segment (fidel/promiscu/...) només pondera PRIORITAT
+
+Output: ranking d'alertes prioritzades, accionable.
 """
 import pandas as pd
 import numpy as np
-import lightgbm as lgb
 from datetime import datetime, timedelta
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
-from build_dataset import compute_cycle_stats
 from inference import load_model, compute_features_for_client, predict_curve
 
 DATA_PATH = '../data/master_commodities.csv'
-MODEL_PATH = 'models/model.txt'
-HORIZONS = [7, 14, 30, 60, 90]
 
-SHARE_FIDEL_THR     = 0.70
-SHARE_MARGINAL_THR  = 0.20
-RATIO_EN_RISC       = 0.75  # share_3m / share_12m < 0.75 → declining
+SHARE_FIDEL_THR    = 0.70
+SHARE_MARGINAL_THR = 0.20
 
-# Pesos per segment — quant importa actuar-hi
-SEGMENT_WEIGHT = {
-    'FIDEL':     0.8,   # mantenir, no perdre'ls
-    'PROMISCU':  1.0,   # oportunitat de captura
-    'MARGINAL':  0.3,   # baixa prioritat
-    'EN_RISC':   1.2,   # màxima urgència
-    'NOU':       0.5,
+# Pes per segment — només per prioritzar, NO per decidir si alertar
+PES_SEGMENT = {
+    'PROMISCU': 1.3,   # màxima oportunitat de captura
+    'EN_RISC':  1.2,   # recuperar urgent
+    'FIDEL':    0.8,   # mantenir
+    'MARGINAL': 0.4,   # baixa prioritat
+    'NOU':      0.5,
 }
 
-def segment_client(grp, today, potencial):
-    """Compute share-of-wallet and segment for a (client, family)."""
-    baseline = grp[grp['en_campana'] == 0]
+def segment_client(grp, today):
+    """Share of wallet → segment. Només per ponderar prioritat."""
+    baseline    = grp[grp['en_campana'] == 0]
     baseline_daily = baseline.groupby('Fecha')['Valores_H'].sum()
-    all_daily = grp.groupby('Fecha')['Valores_H'].sum()
+    all_daily   = grp.groupby('Fecha')['Valores_H'].sum()
+    potencial   = float(grp['Potencial_EUR_anual'].iloc[0])
 
     if len(baseline_daily) == 0:
         return None
 
     full_range = pd.date_range(baseline_daily.index.min(), today, freq='D')
     baseline_daily = baseline_daily.reindex(full_range, fill_value=0)
-    all_daily = all_daily.reindex(full_range, fill_value=0)
+    all_daily   = all_daily.reindex(full_range, fill_value=0)
 
     if today not in full_range:
         return None
     idx = full_range.get_loc(today)
 
-    # Rolling windows
     e90  = baseline_daily.rolling(90, min_periods=1).sum().iloc[idx]
     e365 = baseline_daily.rolling(365, min_periods=1).sum().iloc[idx]
-
-    share_12m = e365 / potencial if potencial > 0 else 0
+    share_12m   = e365 / potencial if potencial > 0 else 0
     share_3m_an = (e90 * 4) / potencial if potencial > 0 else 0
 
-    # Segment
     purchase_dates = full_range[all_daily > 0]
     first_buy = purchase_dates[0] if len(purchase_dates) > 0 else today
 
+    # Segment (strict per share)
     if (today - first_buy).days < 90:
-        segment = 'NOU'
+        seg = 'NOU'
     elif share_12m >= SHARE_FIDEL_THR:
-        segment = 'FIDEL' if share_3m_an >= share_12m * RATIO_EN_RISC else 'EN_RISC'
+        seg = 'FIDEL'
     elif share_12m >= SHARE_MARGINAL_THR:
-        segment = 'PROMISCU' if share_3m_an >= share_12m * RATIO_EN_RISC else 'EN_RISC'
+        seg = 'PROMISCU'
     else:
-        segment = 'MARGINAL' if share_3m_an >= share_12m * RATIO_EN_RISC else 'EN_RISC'
+        seg = 'MARGINAL'
+
+    # Override: si share està caient
+    if share_3m_an < share_12m * 0.75 and share_12m > 0.05:
+        seg = 'EN_RISC'
 
     return {
-        'segment': segment,
-        'share_12m': share_12m,
-        'share_3m_an': share_3m_an,
+        'segment': seg,
+        'share_12m': round(share_12m, 3),
+        'share_3m_an': round(share_3m_an, 3),
         'gap_eur': max(0, potencial - e365),
+        'potencial': potencial,
     }
 
-def compute_priority(meta, curve, segment_info):
+def compute_priority(meta, seg_info):
     """
-    Priority = gap × segment_weight × timing_factor
-    
-    timing_factor:
-      - High when purchase is probable but not imminent
-      - Low when purchase is imminent (they'll buy anyway)
-      - Low when purchase is very far (no urgency)
-    
-    sweet_spot = P(30d) is high AND P(7d) is not too high
+    Prioritat = gap × retard_relatiu × pes_segment
+
+    retard_relatiu: com de lluny de la mediana (cap at 3x)
     """
-    p7  = curve['raw_probs'].get(7, 0)
-    p30 = curve['raw_probs'].get(30, 0)
-    t50 = curve['percentiles'].get('p50', 365)
-    gap = segment_info['gap_eur']
-    seg = segment_info['segment']
+    gap    = seg_info['gap_eur']
+    pes    = PES_SEGMENT.get(seg_info['segment'], 0.5)
+    t_p50  = meta['median_day']
+    dies   = meta['dies_sense_compra']
 
-    # Sweet spot: likely to buy in 30d but not this week
-    timing = p30 * (1 - p7) * (30 / max(t50, 1))
-    # Clamp: if t50 is very large, timing should be low
-    if t50 > 180:
-        timing *= 0.3
-    elif t50 > 90:
-        timing *= 0.6
+    if t_p50 and t_p50 > 0 and t_p50 < 365:
+        retard = min(max(0, dies / t_p50), 3.0)  # cap a 3x max
+    else:
+        retard = 1.0
 
-    weight = SEGMENT_WEIGHT.get(seg, 0.5)
-    priority = gap * weight * timing
+    return round(gap * retard * pes, 1)
 
-    return priority
+def generar_alerta(client_id, familia, today, seg_info, curve, meta):
+    """Alerta unificada: qualsevol client + finestra + motiu."""
+    gap     = seg_info['gap_eur']
+    seg     = seg_info['segment']
+    share   = seg_info['share_12m']
+    p_max   = curve['p_max']
+    dies    = meta['dies_sense_compra']
+    t_p50   = curve['percentiles']['p50']
+    t_p75   = curve['percentiles']['p75']
+    t_p90   = curve['percentiles']['p90']
+    p7      = curve['raw_probs'].get(7, 0)
+    p30     = curve['raw_probs'].get(30, 0)
+    p90     = curve['raw_probs'].get(90, 0)
 
-def generate_alert(client_id, familia, today, segment_info, curve, priority):
-    """Generate the combined alert with explanation."""
-    gap = segment_info['gap_eur']
-    seg = segment_info['segment']
-    p7  = curve['raw_probs'].get(7, 0)
-    p30 = curve['raw_probs'].get(30, 0)
-    p90 = curve['raw_probs'].get(90, 0)
-    t50 = curve['percentiles'].get('p50', 365)
-    t75 = curve['percentiles'].get('p75', 365)
-    dies_sense = segment_info.get('dies_sense_compra', 0)
-
-    # Build explanation based on segment + timing
-    parts = []
+    # Explicació segment
     if seg == 'FIDEL':
-        parts.append(f"Client fidel (share {segment_info['share_12m']:.0%})")
+        desc = f"Client fidel (share {share:.0%})"
     elif seg == 'PROMISCU':
-        parts.append(f"Client promiscu (share {segment_info['share_12m']:.0%}, gap {gap:.0f}€)")
+        desc = f"Client promiscu (share {share:.0%}, gap {gap:.0f}€)"
     elif seg == 'EN_RISC':
-        parts.append(f"Client en risc (share 12m: {segment_info['share_12m']:.0%} → 3m: {segment_info['share_3m_an']:.0%})")
+        desc = f"Client en risc (share 12m:{share:.0%} → 3m:{seg_info['share_3m_an']:.0%})"
     elif seg == 'MARGINAL':
-        parts.append(f"Client marginal (share {segment_info['share_12m']:.0%})")
-
-    # Timing info
-    if t50 < 14:
-        parts.append(f"comprarà aviat (mediana {t50}d)")
-    elif t50 < 30:
-        parts.append(f"finestra de captura: mediana {t50}d")
-    elif t50 < 90:
-        parts.append(f"pot comprar els pròxims mesos (mediana {t50}d)")
+        desc = f"Client marginal (share {share:.0%})"
     else:
-        parts.append(f"no es preveu compra imminent (mediana >90d)")
+        desc = f"Client {seg}"
 
-    # Alert urgency
-    if dies_sense > t75 and t75 < 365:
-        urgency = '🔴 CRÍTIC' if dies_sense > t75 * 1.5 else '🟡 RISC'
-    elif seg == 'EN_RISC':
-        urgency = '🟡 RISC'
-    elif seg == 'PROMISCU' and p30 > 0.5:
-        urgency = '🟡 OPORTUNITAT'
+    # Explicació finestra
+    if p_max < 0.2:
+        # Client molt esporàdic → finestra ampla
+        ex = f"P_max={p_max:.0%} als 90 dies (patró esporàdic). Esperat: ~dia {t_p50}."
     else:
-        urgency = '📊 INFO'
+        ex = f"Finestra esperada: {curve['percentiles']['p25']}-{t_p75}d (P50 rel ={t_p50}d)."
+
+    # Determinar si cal alertar
+    si_alerta = False
+    urgencia = '📊 INFO'
+    if t_p90 and t_p90 < 365 and dies > t_p90:
+        si_alerta = True
+        urgencia  = '🔴 CRÍTIC' if dies > t_p90 * 1.3 else '🟡 RISC'
+    elif t_p75 and t_p75 < 365 and dies > t_p75:
+        si_alerta = True
+        urgencia  = '🟡 RISC'
+    elif dies > 365:
+        si_alerta = True
+        urgencia  = '🔴 CRÍTIC'
+
+    # Motiu complet
+    if si_alerta:
+        dies_retard = dies - t_p50
+        motiu = f"{desc}. Hauria d'haver comprat ~dia {t_p50} i porta {dies_retard}d de retard ({p30:.0%} prob als 30d). Cal contactar."
+    else:
+        motiu = f"{desc}. {ex} Dins del rang esperat."
 
     return {
         'client_id': client_id,
         'familia': familia,
         'segment': seg,
-        'urgency': urgency,
-        'priority': round(priority, 1),
-        'gap_eur': round(gap, 2),
-        'share_wallet': round(segment_info['share_12m'], 3),
-        'prob_7d': f"{p7:.0%}",
-        'prob_30d': f"{p30:.0%}",
-        'prob_90d': f"{p90:.0%}",
-        'median_day': t50,
-        'window_iqr': f"{curve['percentiles']['p25']}-{curve['percentiles']['p75']}d",
-        'explanation': '. '.join(parts) + '.',
+        'urgencia': urgencia,
+        'prioritat': 0.0,  # es calcula després
+        'es_alerta': si_alerta,
+        'gap_eur': round(gap, 1),
+        'share_wallet': share,
+        'p_max': p_max,
+        'P(7d)': f"{p7:.0%}",
+        'P(30d)': f"{p30:.0%}",
+        'P(90d)': f"{p90:.0%}",
+        't_p50': t_p50,
+        't_p75': t_p75,
+        't_p90': t_p90,
+        'finestra': f"{curve['percentiles'].get('p25', '?')}-{t_p75}d",
+        'dies_sense': dies,
+        'motiu': motiu,
+        'today': today,
+        'median_day': t_p50,
     }
 
+
 def main():
-    model = load_model()
-    df = pd.read_csv(DATA_PATH, low_memory=False)
+    model  = load_model()
+    df     = pd.read_csv(DATA_PATH, low_memory=False)
     df['Fecha'] = pd.to_datetime(df['Fecha'])
 
-    today = pd.Timestamp('2025-09-15')  # could be any day
+    today = pd.Timestamp('2025-09-15')
 
-    print(f"\n{'='*80}")
+    print(f"\n{'='*90}")
     print(f"📋 BRIEFING COMERCIAL · {today.date()}")
-    print(f"   Segmentació (share of wallet) + Timing (LightGBM)")
-    print(f"{'='*80}")
+    print(f"   Alerta si surt de la finestra (p90_rel). Segment només pondera.")
+    print(f"{'='*90}")
 
-    # Process each (client, family) — for POC, sample a subset
     groups = list(df.groupby(['Id_Cliente', 'Familia_Potencial']))
-    rng = np.random.RandomState(42)
-    rng.shuffle(groups)  # shuffle to show diversity
+    np.random.RandomState(42).shuffle(groups)
 
-    alerts = []
-    n_processed = 0
+    alertes = []
+    n_proc = 0
 
-    # For the POC, process a limited number of groups
     for (cid, fam), grp in groups:
-        if n_processed >= 500:
+        if n_proc >= 500:
             break
-        n_processed += 1
+        n_proc += 1
 
         potencial = float(grp['Potencial_EUR_anual'].iloc[0])
-        seg_info = segment_client(grp, today, potencial)
+        seg_info = segment_client(grp, today)
         if seg_info is None:
             continue
 
-        # Get LightGBM curve
         result = compute_features_for_client(grp, today, fam)
         if result is None:
             continue
         feat_row, meta = result
         meta['dies_sense_compra'] = meta['dies_sense_compra']
-        seg_info['dies_sense_compra'] = meta['dies_sense_compra']
+        dies = meta['dies_sense_compra']
 
-        curve = predict_curve(model, feat_row)
-        priority = compute_priority(meta, curve, seg_info)
-        alert = generate_alert(cid, fam, today, seg_info, curve, priority)
+        curve   = predict_curve(model, feat_row)
+        p_max   = curve['p_max']
+        p90     = curve['raw_probs'].get(90, 0)
 
-        alerts.append(alert)
+        # Filtre: si porta > 365d sense comprar i prob molt baixa → fugat, no alertar
+        if dies > 365 and p_max < 0.15:
+            continue
+        if dies > 180 and p_max < 0.05:
+            continue
 
-    # Rank by priority
-    alerts.sort(key=lambda a: a['priority'], reverse=True)
+        alerta  = generar_alerta(cid, fam, today, seg_info, curve, meta)
+        meta_for_priority = {**meta, 'median_day': curve['percentiles']['p50']}
+        alerta['prioritat'] = compute_priority(meta_for_priority, seg_info)
+        alertes.append(alerta)
 
-    # Print summary stats
-    seg_counts = {}
-    urg_counts = {}
-    for a in alerts:
-        seg_counts[a['segment']] = seg_counts.get(a['segment'], 0) + 1
-        urg_counts[a['urgency']] = urg_counts.get(a['urgency'], 0) + 1
+    alertes.sort(key=lambda a: a['prioritat'], reverse=True)
 
-    print(f"\n📊 Resum: {len(alerts)} alertes generades (mostra de 500 clients)")
-    print(f"   Segments: {seg_counts}")
-    print(f"   Urgències: {urg_counts}")
+    # Stats
+    n_alerta = sum(1 for a in alertes if a['es_alerta'])
+    seg_c = {}
+    urg_c = {}
+    for a in alertes:
+        seg_c[a['segment']] = seg_c.get(a['segment'], 0) + 1
+        urg_c[a['urgencia']] = urg_c.get(a['urgencia'], 0) + 1
 
-    # Show top 10
-    print(f"\n{'='*80}")
-    print("🏆 TOP 10 ALERTES PRIORITZADES")
-    print(f"{'='*80}")
-    print(f"{'Client':>10} {'Família':<15} {'Segment':<12} {'Urgència':<18} {'Prioritat':>9} {'Gap':>8} {'P(30d)':>7} {'Mediana':>7} {'Finestra':<10}")
-    print(f"{'-'*10} {'-'*15} {'-'*12} {'-'*18} {'-'*9} {'-'*8} {'-'*7} {'-'*7} {'-'*10}")
+    print(f"\n📊 {len(alertes)} clients processats | 🚨 {n_alerta} alertes generades")
+    print(f"   Segments:  {seg_c}")
+    print(f"   Urgències: {urg_c}")
 
-    for a in alerts[:10]:
-        print(f"{a['client_id']:>10} {a['familia']:<15} {a['segment']:<12} {a['urgency']:<18} {a['priority']:>9.1f} {a['gap_eur']:>8.1f} {a['prob_30d']:>7} {a['median_day']:>7} {a['window_iqr']:<10}")
+    # TOP 10
+    print(f"\n{'='*90}")
+    print("🏆 RANKING ALERTES")
+    print(f"{'='*90}")
+    h = f"{'Client':>10} {'Família':<14} {'Segm.':<8} {'Urg.':<10} {'Prior.':>7} {'Gap€':>8} {'P30':>5} {'T_p50':>6} {'T_p90':>6} {'Dies':>5} {'Finestra':<10}"
+    print(h)
+    print('-' * 90)
 
-    # Show 3 detailed examples
-    print(f"\n{'='*80}")
-    print("🔍 EXEMPLES DETALLATS")
-    print(f"{'='*80}")
+    for a in alertes[:10]:
+        f = f"{a['P(30d)']:>5} {a['t_p50']:>6} {a['t_p90'] if a['t_p90']<365 else '>365':>6} {a['dies_sense']:>5} {a['finestra']:<10}"
+        print(f"{a['client_id']:>10} {a['familia']:14} {a['segment']:8} {a['urgencia']:10} {a['prioritat']:7.1f} {a['gap_eur']:8.1f}{f}")
 
-    top_urgency = ['🔴 CRÍTIC', '🟡 RISC', '🟡 OPORTUNITAT']
-    for urg in top_urgency:
-        examples = [a for a in alerts if a['urgency'] == urg]
-        if examples:
-            ex = examples[0]
-            print(f"\n{ex['urgency']} — Client {ex['client_id']} · {ex['familia']}")
-            print(f"   Segment: {ex['segment']} | Share: {ex['share_wallet']:.0%} | Gap: {ex['gap_eur']}€")
-            print(f"   Corba: P(7d)={ex['prob_7d']}  P(30d)={ex['prob_30d']}  P(90d)={ex['prob_90d']}")
-            print(f"   Finestra (IQR): {ex['window_iqr']} | Mediana: dia {ex['median_day']}")
-            print(f"   Motiu: {ex['explanation']}")
+    # Exemples
+    print(f"\n{'='*90}")
+    print("🔍 EXEMPLES")
+    for cat in ['🔴 CRÍTIC', '🟡 RISC', '📊 INFO']:
+        exs = [a for a in alertes if a['urgencia'] == cat][:1]
+        for a in exs:
+            print(f"\n{cat} — Cli.{a['client_id']} {a['familia']} | Segm.:{a['segment']} | Gap:{a['gap_eur']}€")
+            print(f"   Corba: P(7d)={a['P(7d)']}  P(30d)={a['P(30d)']}  P(90d)={a['P(90d)']}  P_max={a['p_max']:.0%}")
+            print(f"   Finestra: {a['finestra']}  T_p50={a['t_p50']}d  T_p90={a['t_p90']}d  Dies_sense={a['dies_sense']}d")
+            print(f"   Motiu: {a['motiu']}")
 
-    print(f"\n{'='*80}")
-    print("✅ Fet. Per generar briefing complet: augmentar mostra a tots els clients")
+    print(f"\n{'='*90}")
+    print("✅ Fet")
 
 if __name__ == '__main__':
     main()

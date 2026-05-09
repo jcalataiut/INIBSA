@@ -192,29 +192,32 @@ def predict_curve(model, base_features):
     fine_p = np.clip(fine_p, 0, 1)
     fine_p = np.maximum.accumulate(fine_p)  # ensure non-decreasing
 
-    # Find thresholds
+    # Find thresholds — RELATIVE to max probability achieved
+    p_max = max(fine_p[-1], 0.01)  # max P in 0-365 days
+
     def first_where(condition, default=365):
         idxs = np.where(condition)[0]
         return int(idxs[0]) if len(idxs) > 0 else default
 
-    t_05 = first_where(fine_p >= 0.05)
-    t_25 = first_where(fine_p >= 0.25)
-    t_50 = first_where(fine_p >= 0.50)
-    t_75 = first_where(fine_p >= 0.75)
-    t_95 = first_where(fine_p >= 0.95)
+    t_p10  = first_where(fine_p >= 0.10 * p_max)
+    t_p25  = first_where(fine_p >= 0.25 * p_max)
+    t_p50  = first_where(fine_p >= 0.50 * p_max)
+    t_p75  = first_where(fine_p >= 0.75 * p_max)
+    t_p90  = first_where(fine_p >= 0.90 * p_max)
 
     return {
         'raw_probs': probs,
         'curve': {'h': fine_h.tolist(), 'p': fine_p.tolist()},
+        'p_max': round(p_max, 4),
         'percentiles': {
-            'p5': t_05,    # 5% → very optimistic
-            'p25': t_25,   # 25%
-            'p50': t_50,   # median expected day
-            'p75': t_75,   # 75%
-            'p95': t_95,   # 95% → almost certain
+            'p10': t_p10,   # 10% of max P → lower bound
+            'p25': t_p25,   # 25% of max P
+            'p50': t_p50,   # 50% of max P → median-like
+            'p75': t_p75,   # 75% of max P
+            'p90': t_p90,   # 90% of max P → alert threshold
         },
-        'window_90pct': (t_05, t_95),  # 90% confidence window
-        'window_50pct': (t_25, t_75),  # 50% confidence window (IQR)
+        'window_medio': (t_p25, t_p75),  # central 50% of probability mass
+        'window_alerta': (t_p10, t_p90), # 80% window → alert if past p90
     }
 
 
