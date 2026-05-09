@@ -81,24 +81,33 @@ export default function App() {
     <div style={styles.container}>
       <Header activeTab={activeTab} onTabChange={setActiveTab} />
       <div style={styles.content}>
-        {stats && <MetricsBar stats={stats} />}
-        {activeTab === 'briefing' && (
+        {loading ? (
+          <div style={styles.loading}>
+            <div style={styles.spinner} />
+            <span style={styles.loadingText}>Calculant alertes...</span>
+          </div>
+        ) : (
           <>
-            <Filters
-              filterSegment={filterSegment}
-              filterTipus={filterTipus}
-              filterUrgencia={filterUrgencia}
-              showTreated={showTreated}
-              onSegmentChange={setFilterSegment}
-              onTipusChange={setFilterTipus}
-              onUrgenciaChange={setFilterUrgencia}
-              onShowTreatedChange={setShowTreated}
-            />
-            <AlertList alerts={filtered} loading={loading} onToggleTreated={handleToggleTreated} />
+            {stats && <MetricsBar stats={stats} />}
+            {activeTab === 'briefing' && (
+              <>
+                <Filters
+                  filterSegment={filterSegment}
+                  filterTipus={filterTipus}
+                  filterUrgencia={filterUrgencia}
+                  showTreated={showTreated}
+                  onSegmentChange={setFilterSegment}
+                  onTipusChange={setFilterTipus}
+                  onUrgenciaChange={setFilterUrgencia}
+                  onShowTreatedChange={setShowTreated}
+                />
+                <AlertList alerts={filtered} loading={false} onToggleTreated={handleToggleTreated} />
+              </>
+            )}
+            {activeTab === 'fugats' && (
+              <FugatsTab alerts={fugats} loading={false} onToggleTreated={handleToggleTreated} />
+            )}
           </>
-        )}
-        {activeTab === 'fugats' && (
-          <FugatsTab alerts={fugats} loading={loading} onToggleTreated={handleToggleTreated} />
         )}
       </div>
     </div>
@@ -120,5 +129,25 @@ const styles: Record<string, React.CSSProperties> = {
     margin: '0 auto',
     padding: '0 32px 48px',
     flex: 1,
+  },
+  loading: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '120px 0',
+    gap: 20,
+  },
+  spinner: {
+    width: 32,
+    height: 32,
+    border: '3px solid #E5E7EB',
+    borderTop: '3px solid #00B8A9',
+    animation: 'spin 0.8s linear infinite',
+  },
+  loadingText: {
+    fontSize: 15,
+    color: '#6B7280',
+    fontWeight: 500,
   },
 }
