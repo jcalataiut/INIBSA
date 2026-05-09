@@ -170,9 +170,13 @@ Les 10 campanyes registrades:
 
 ---
 
-## 4. Master dataset (`master_with_ids.csv`)
+## 4. Master datasets (`master_commodities.csv` + `master_technicals.csv`)
 
-El pipeline `build_dataset.py` unifica tots els datasets en una sola taula de **162.546 files × 21 columnes**, una per línia de venda.
+El pipeline `build_dataset.py` unifica tots els datasets i separa per bloc analític:
+- **`data/master_commodities.csv`** — productes de consum recurrent (Anestèsia + Bioseguretat)
+- **`data/master_technicals.csv`** — productes tècnics (Biomaterials)
+
+Cada dataset té **162.546 files × 21 columnes** en total, una per línia de venda.
 
 ### Columnes i descripció
 
@@ -216,7 +220,7 @@ dia_anyo          # Dia de l'any (1-365)
 ```python
 import pandas as pd
 
-df = pd.read_csv('master_with_ids.csv')
+df = pd.read_csv('data/master_commodities.csv')
 
 # Eliminar IDs i data raw
 X = df.drop(columns=['Num.Fact', 'Fecha', 'Id_Cliente', 'Id_Producto'])
@@ -342,7 +346,7 @@ El script `build_dataset.py` executa tots els passos de neteja i unió:
 
 ```bash
 python3 build_dataset.py
-# Output: master_with_ids.csv (162.546 files × 21 columnes)
+# Output: data/master_commodities.csv + data/master_technicals.csv
 ```
 
 ### Dependències
@@ -385,10 +389,8 @@ pip install pandas numpy
 ├── data_cleaning_analysis.ipynb               # Notebook de neteja i anàlisi de dades
 ├── client_product_annual_behavior.ipynb       # Anàlisi de comportament anual per client
 ├── data/
-│   ├── master_commodities.csv                 # Master de dades per productes recurrents
-│   ├── master_commodities_clean.csv           # Master net de commodities
-│   ├── master_technicals.csv                  # Master de productes tècnics
-│   ├── master_technicals_clean.csv            # Master net de tècnics
+│   ├── master_commodities.csv                 # Dades de productes commodity (sortida build_dataset.py)
+│   ├── master_technicals.csv                  # Dades de productes tècnics (sortida build_dataset.py)
 │   └── raw/                                   # Fitxers originals exportats
 │       ├── Datasets.xlsx - Campañas.csv
 │       ├── Datasets.xlsx - Clientes.csv

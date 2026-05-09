@@ -31,8 +31,8 @@ from datetime import datetime, timedelta
 # =============================================================================
 # CONFIGURACIÓ — Llindars de negoci ajustables
 # =============================================================================
-DATA_PATH = 'data/master_commodities_clean.csv'
-POTENCIAL_COL = 'Potencial_EUR'  # al clean CSV (build_dataset.py genera _anual)
+DATA_PATH = 'data/master_commodities.csv'
+POTENCIAL_COL = 'Potencial_EUR_anual'
 
 # ── Segmentació — llindars del README §5.2 ────────────────────────────────────
 SHARE_FIDEL_THR = 0.70        # > 70% del seu potencial a Inibsa → fidel
