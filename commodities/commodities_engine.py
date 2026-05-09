@@ -37,7 +37,11 @@ POTENCIAL_COL = 'Potencial_EUR'  # al clean CSV (build_dataset.py genera _anual)
 # ── Segmentació — llindars del README §5.2 ────────────────────────────────────
 SHARE_FIDEL_THR = 0.70        # > 70% del seu potencial a Inibsa → fidel
 SHARE_MARGINAL_THR = 0.20     # < 20% del potencial → marginal (poc vinculat)
-DIES_PERDUT_THR = 90          # sense compra > 90 dies i tenia historial → perdut (README)
+DIES_FUGAT_THR = 365          # > 365 dies sense comprar → fugat (llindar absolut anual)
+# Perdut: dinàmic segons cicle (vegeu _is_perdut())
+#   sense cicle fiable: > 180 dies
+#   cicle fiable (≥3 int): > max(180, cicle * 2.5)
+#   cicle poc fiable: > max(365, cicle * 3)
 DIES_NOU_THR = 90             # < 90 dies des del primer pedido → nou (≡ 3 mesos)
 DIES_HISTORIAL_MIN = 180      # cal tenir ≥ 180 dies d'historial per no ser "nou"
 
@@ -55,10 +59,17 @@ FINESTRA_CAPTURA_DIES = 3     # ±3 dies al voltant del proper pedido esperat (c
 # =============================================================================
 # 1. CÀRREGA I NETEJA
 # =============================================================================
-def load_data(path=DATA_PATH):
-    """Carrega el dataset de commodities net i prepara les variables base."""
+def load_data(path=DATA_PATH, today=None):
+    """Carrega el dataset de commodities net i prepara les variables base.
+    
+    Si today es proporciona, filtra només vendes fins a essa data.
+    """
     df = pd.read_csv(path, low_memory=False)
     df['Fecha'] = pd.to_datetime(df['Fecha'])
+
+    # Filtrar dates futures (poden haver-hi errors de data al dataset)
+    if today:
+        df = df[df['Fecha'] <= pd.Timestamp(today)]
 
     # Només vendes netes: excloent devolucions
     df = df[df['es_devolucion'] == 0].copy()
@@ -183,26 +194,64 @@ def calc_restock_cycle(df):
 # =============================================================================
 # 4. SEGMENTACIÓ
 # =============================================================================
+def _is_perdut(row):
+    """Detecció dinàmica de perdut segons fiabilitat del cicle.
+
+    - sense cicle o 0 intervals: > 180 dies sense comprar
+    - cicle poc fiable (1-2 intervals): > max(365, cicle * 3) — permissiu
+    - cicle fiable (≥3 intervals): > max(180, cicle * 2.5) — ajustat al patró
+    """
+    dies_sense = row['dies_sense_compra']
+    dies_hist = row['dies_historial']
+    cicle = row.get('cicle_mig_dies')
+    n_int = row.get('num_intervals', 0)
+
+    if dies_hist < DIES_HISTORIAL_MIN:
+        return False
+
+    if pd.isna(cicle) or n_int == 0:
+        return dies_sense > 180
+
+    if n_int <= 2:
+        return dies_sense > max(365, cicle * 3)
+
+    return dies_sense > max(180, cicle * 2.5)
+
+
+def _is_fugat(row):
+    """Fugat: no ha comprat en > 365 dies (llindar absolut anual).
+    
+    Aquest és el "worst case": un client que compra 1 cop/any i no ho ha fet.
+    Si torna a comprar, el model el reclassifica automàticament al proper càlcul.
+    """
+    dies_sense = row['dies_sense_compra']
+    dies_hist = row['dies_historial']
+    return dies_sense > DIES_FUGAT_THR and dies_hist > DIES_HISTORIAL_MIN
+
+
 def segment_client(row):
     """Classifica un (client, família) segons l'estat actual.
 
-    Ordre (README §5.2):
+    Ordre:
       1. 'nou': < 90 dies d'historial
-      2. 'perdut': > 90 dies sense compra + tenia historial previ
-      3. 'en_risc': era fidel/promiscu, tendència decreixent últims 3m
-      4. 'fidel': share > 70%, compra regular
-      5. 'promiscu': share 20-70%, compra regular però parcial
-      6. 'marginal': share < 20%, molt per sota del potencial
+      2. 'fugat': > 365 dies sense comprar (llindar anual absolut)
+      3. 'perdut': dinàmic segons cicle + fiabilitat
+      4. 'en_risc': era fidel/promiscu, tendència decreixent últims 3m
+      5. 'fidel': share > 70%, compra regular
+      6. 'promiscu': share 20-70%, compra regular però parcial
+      7. 'marginal': share < 20%, molt per sota del potencial
     """
     dies_hist = row['dies_historial']
-    dies_sense = row['dies_sense_compra']
     share_12m = row['share_12m']
     tendencia = row.get('tendencia_negativa', False)
 
     if dies_hist < DIES_NOU_THR:
         return 'nou'
 
-    if dies_sense > DIES_PERDUT_THR and dies_hist > DIES_HISTORIAL_MIN:
+    if _is_fugat(row):
+        return 'fugat'
+
+    if _is_perdut(row):
         return 'perdut'
 
     if tendencia and share_12m > SHARE_MARGINAL_THR:
@@ -268,7 +317,7 @@ def segment_all(monthly, cycles, today):
 # =============================================================================
 # 5. GENERACIÓ D'ALERTES
 # =============================================================================
-def generate_alerts(segments, today, provincia_map=None):
+def generate_alerts(segments, today, provincia_map=None, verbose=False):
     """Genera alertes prioritzades per cada (client, família) que requereix acció.
 
     Retorna un DataFrame amb una fila per alerta, ordenat per prioritat desc.
@@ -284,6 +333,7 @@ def generate_alerts(segments, today, provincia_map=None):
         'marginal': 0.2,
         'en_risc': 0.9,
         'perdut': 0.05,
+        'fugat': 0.15,
         'nou': 0.4,
     }
 
@@ -312,6 +362,7 @@ def generate_alerts(segments, today, provincia_map=None):
             'euros_12m': round(row['euros_12m'], 2),
             'gap_eur': round(row['gap_eur'], 2),
             'dies_sense_compra': int(row['dies_sense_compra']),
+            'num_intervals': int(row['num_intervals']) if pd.notna(row['num_intervals']) else 0,
             'data_alerta': today,
         }
 
@@ -319,6 +370,33 @@ def generate_alerts(segments, today, provincia_map=None):
         cicle_std = row['cicle_std_dies']
         dies_sense = row['dies_sense_compra']
         segment = row['segment']
+
+        # ── FUGAT ────────────────────────────────────────────────────
+        if segment == 'fugat':
+            alert['tipus_alerta'] = 'fugat'
+            alert['urgencia'] = 'mitjana'
+            alert['canal'] = 'delegat'
+            if cicle_mig and not pd.isna(cicle_mig):
+                alert['cicle_mig_dies'] = round(cicle_mig, 1)
+                alert['dies_retard'] = int(max(0, dies_sense - cicle_mig))
+            else:
+                alert['cicle_mig_dies'] = None
+                alert['dies_retard'] = dies_sense
+            # Fugat: porta > 1 any sense comprar. Impacte = potencial sencer
+            impacte = max(alert['gap_eur'], row[POTENCIAL_COL] * 0.8)
+            alert['prioritat'] = calc_prioritat(
+                impacte, alert['dies_retard'],
+                cicle_mig if (cicle_mig and not pd.isna(cicle_mig)) else None,
+                PROB_CONVERSIO['fugat']
+            )
+            alert['motiu'] = (
+                f"Client FUGAT. Porta MÉS D'UN ANY sense comprar "
+                f"({dies_sense} dies). Historial previ de {row['dies_historial']:.0f} dies. "
+                f"Requereix recuperació directa per delegat. "
+                f"Gap potencial: {impacte:,.0f}€/any."
+            )
+            alerts.append(alert)
+            continue
 
         # ── PERDUT ─────────────────────────────────────────────────────
         if segment == 'perdut':
@@ -520,6 +598,20 @@ def generate_alerts(segments, today, provincia_map=None):
         return pd.DataFrame()
 
     alerts_df = pd.DataFrame(alerts)
+
+    # ── Post-filtre: "va provar i se'n va anar" ────────────────────────────
+    # Clients amb > 2 anys sense comprar i ≤ 2 intervals: són casos perduts
+    # que no mereixen esforç comercial (van provar i mai van ser actius).
+    abans = len(alerts_df)
+    alerts_df = alerts_df[~(
+        (alerts_df['dies_sense_compra'] > 730)
+        & (alerts_df['num_intervals'] <= 2)
+    )]
+    if verbose:
+        filtrats = abans - len(alerts_df)
+        if filtrats:
+            print(f"   🗑️  {filtrats} alertes suprimides (clients 'van provar i marxar')")
+
     if 'prioritat' in alerts_df.columns:
         alerts_df = alerts_df.sort_values('prioritat', ascending=False).reset_index(drop=True)
     return alerts_df
@@ -554,7 +646,7 @@ def run(today=None, family=None, output_path=None, verbose=True):
     # ── 1. Carregar ────────────────────────────────────────────────────────
     if verbose:
         print("📥 Carregant dades...", end=' ')
-    raw = load_data(DATA_PATH)
+    raw = load_data(DATA_PATH, today=today)
 
     if family:
         raw = raw[raw['Familia_Potencial'] == family]
@@ -606,7 +698,7 @@ def run(today=None, family=None, output_path=None, verbose=True):
     # ── 6. Alertes ─────────────────────────────────────────────────────────
     if verbose:
         print("🔔 Alertes...", end=' ')
-    alerts = generate_alerts(segments, today, prov_map)
+    alerts = generate_alerts(segments, today, prov_map, verbose=verbose)
     if verbose:
         print(f"{len(alerts):,} alertes generades")
         if len(alerts) > 0:
