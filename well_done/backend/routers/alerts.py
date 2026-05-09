@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from fastapi import APIRouter, Query
 from sqlalchemy import text
 from datetime import datetime
@@ -42,6 +43,7 @@ def get_alerts(
         clear_cache(today_str)
         alerts_df, _ = run(today=today_str, family=family, verbose=False)
         if not alerts_df.empty:
+            alerts_df = alerts_df.replace({np.nan: None})
             cols_to_save = [
                 "id_cliente", "provincia", "familia_potencial", "segment",
                 "segment_anterior", "tipus_alerta", "urgencia", "canal",
@@ -77,7 +79,8 @@ def get_alerts(
 
     query += " ORDER BY prioritat DESC NULLS LAST"
 
-    df = pd.read_sql(query, engine, params=params)
+    df = pd.read_sql(text(query), engine, params=params)
+    df = df.replace({np.nan: None})
 
     alerts = []
     for _, row in df.iterrows():

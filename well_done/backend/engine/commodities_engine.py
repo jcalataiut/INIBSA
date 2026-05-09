@@ -19,7 +19,7 @@ def load_data(today=None):
     if today:
         query += " WHERE fecha <= :today"
         params["today"] = today
-    df = pd.read_sql(query, engine, params=params)
+    df = pd.read_sql(text(query), engine, params=params)
     df["fecha"] = pd.to_datetime(df["fecha"])
     df = df[df["es_devolucion"] == 0].copy()
     df[POTENCIAL_COL] = pd.to_numeric(df[POTENCIAL_COL], errors="coerce")
