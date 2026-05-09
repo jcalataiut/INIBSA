@@ -92,8 +92,9 @@ const styles: Record<string, React.CSSProperties> = {
   bar: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 12,
-    paddingBottom: 20,
+    gap: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
   group: {
     display: 'flex',
