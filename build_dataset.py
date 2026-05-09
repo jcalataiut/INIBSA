@@ -15,11 +15,11 @@ import numpy as np
 # =============================================================================
 
 print("📦 Loading raw data...")
-ventas    = pd.read_csv('/mnt/user-data/uploads/Datasets_xlsx_-_Ventas.csv', low_memory=False)
-clientes  = pd.read_csv('/mnt/user-data/uploads/Datasets_xlsx_-_Clientes.csv')
-productos = pd.read_csv('/mnt/user-data/uploads/Datasets_xlsx_-_Productos.csv')
-potencial = pd.read_csv('/mnt/user-data/uploads/Datasets_xlsx_-_Potencial.csv')
-campanas  = pd.read_csv('/mnt/user-data/uploads/Datasets_xlsx_-_Campañas.csv')
+ventas    = pd.read_csv('data/raw/Datasets.xlsx - Ventas.csv', low_memory=False)
+clientes  = pd.read_csv('data/raw/Datasets.xlsx - Clientes.csv')
+productos = pd.read_csv('data/raw/Datasets.xlsx - Productos.csv')
+potencial = pd.read_csv('data/raw/Datasets.xlsx - Potencial.csv')
+campanas  = pd.read_csv('data/raw/Datasets.xlsx - Campañas.csv')
 
 # ── 1. PARSEO Y LIMPIEZA DE COLUMNAS RAW ────────────────────────────────────
 
@@ -156,9 +156,14 @@ df = df[[
 ]]
 
 # ── 9. SAVE ───────────────────────────────────────────────────────────────────
-output_path = '/mnt/user-data/outputs/master_with_ids.csv'
-df.to_csv(output_path, index=False)
+df_commodities = df[df['es_commodity'] == 1].copy()
+df_technicals = df[df['es_commodity'] == 0].copy()
 
-print(f"\n✅ DONE — {df.shape[0]:,} filas × {df.shape[1]} columnas → master_with_ids.csv")
+df_commodities.to_csv('data/master_commodities.csv', index=False)
+df_technicals.to_csv('data/master_technicals.csv', index=False)
+
+print(f"\n✅ DONE — Separated into 2 datasets:")
+print(f"  - master_commodities.csv: {df_commodities.shape[0]:,} filas")
+print(f"  - master_technicals.csv: {df_technicals.shape[0]:,} filas")
 print(f"\n  Para modelo: df.drop(columns=['Num.Fact', 'Fecha', 'Id_Cliente', 'Id_Producto'])")
 print(f"\n{df.dtypes}")
