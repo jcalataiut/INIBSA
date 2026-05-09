@@ -49,6 +49,22 @@ def key_treated(row):
 def is_treated(row, treated):
     return key_treated(row) in treated
 
+def clean_treated(treated, alerts):
+    """Elimina tractaments que ja no calen (el client ha tornat a comprar).
+
+    Si una alerta tractada ja NO apareix a l'output del motor d'avui,
+    és perquè el client ha comprat, el segment ha canviat o la situació
+    s'ha resolt sola. Llavors l'eliminem de tractats perquè torni a
+    entrar al joc si torna a passar.
+    """
+    active_keys = set(key_treated(row) for _, row in alerts.iterrows())
+    to_remove = [k for k in treated if k not in active_keys]
+    for k in to_remove:
+        del treated[k]
+    if to_remove:
+        save_treated(treated)
+    return treated
+
 
 # ── Run engine ─────────────────────────────────────────────────────────────
 @st.cache_data(show_spinner='🔄 Calculant alertes...')
@@ -72,9 +88,18 @@ today_str = selected_date.strftime('%Y-%m-%d')
 alerts, segments = get_alerts(today_str)
 treated = load_treated()
 
+# Netejar tractats: si una alerta tractada ja no apareix al motor d'avui
+# (perquè el client ha comprat o la situació s'ha resolt), s'elimina sola
+treated = clean_treated(treated, alerts)
+save_treated(treated)
+
 st.sidebar.markdown('---')
 st.sidebar.markdown(f'**Alertes:** {len(alerts)}')
 st.sidebar.markdown(f'**Pendents:** {sum(1 for _, a in alerts.iterrows() if not is_treated(a, treated))}')
+st.sidebar.markdown(f'**Tractades:** {sum(1 for _, a in alerts.iterrows() if is_treated(a, treated))}')
+n_auto = len(treated) - sum(1 for _, a in alerts.iterrows() if is_treated(a, treated))
+if n_auto > 0:
+    st.sidebar.markdown(f'*({n_auto} tractades en dies anteriors que ja no calen)*')
 st.sidebar.markdown(f'**Tractades:** {sum(1 for _, a in alerts.iterrows() if is_treated(a, treated))}')
 
 # ── Tabs: Briefing + Fugats ────────────────────────────────────────────────

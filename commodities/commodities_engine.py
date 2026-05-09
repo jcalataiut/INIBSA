@@ -156,6 +156,8 @@ def attach_potencial(monthly, raw_df):
 # =============================================================================
 def calc_restock_cycle(df):
     """Calcula cicle de reposició per (client, família) des de dates de factura.
+    
+    Exclou vendes en campanya per no distorsionar el cicle real de compra.
 
     Per cada parella client-família, pren totes les dates de pedido,
     calcula intervals entre dies consecutius, i n'extreu:
@@ -164,7 +166,9 @@ def calc_restock_cycle(df):
       - num_intervals: nombre d'intervals (fiabilitat)
       - data_ultim_pedido, data_primer_pedido
     """
-    facturas = df[[
+    # Excloure campanyes: les compres durant promocions són pics artificials
+    # que no reflecteixen el patró de consum real
+    facturas = df[df['en_campana'] == 0][[
         'Id_Cliente', 'Familia_Potencial', 'Num.Fact', 'Fecha'
     ]].drop_duplicates().sort_values([
         'Id_Cliente', 'Familia_Potencial', 'Fecha'
@@ -214,8 +218,8 @@ def _is_perdut(row):
     if dies_hist < DIES_HISTORIAL_MIN:
         return False
 
-    if pd.isna(cicle) or n_int == 0:
-        return dies_sense > 180
+    if pd.isna(cicle) or n_int == 0 or pd.isna(dies_sense):
+        return dies_sense > 180 if not pd.isna(dies_sense) else True
 
     if n_int <= 2:
         return dies_sense > max(365, cicle * 3)
@@ -225,12 +229,14 @@ def _is_perdut(row):
 
 def _is_fugat(row):
     """Fugat: no ha comprat en > 365 dies (llindar absolut anual).
-    
+
     Aquest és el "worst case": un client que compra 1 cop/any i no ho ha fet.
     Si torna a comprar, el model el reclassifica automàticament al proper càlcul.
     """
     dies_sense = row['dies_sense_compra']
     dies_hist = row['dies_historial']
+    if pd.isna(dies_sense) or dies_sense == 999:
+        return True  # sense dada → considerem fugat
     return dies_sense > DIES_FUGAT_THR and dies_hist > DIES_HISTORIAL_MIN
 
 
@@ -291,13 +297,24 @@ def segment_all(monthly, cycles, today):
     # Mètriques temporals
     latest['data_ultim_pedido'] = pd.to_datetime(latest['data_ultim_pedido'])
     latest['data_primer_pedido'] = pd.to_datetime(latest['data_primer_pedido'])
-    latest['dies_sense_compra'] = (today_ts - latest['data_ultim_pedido']).dt.days
-    latest['dies_historial'] = (today_ts - latest['data_primer_pedido']).dt.days
+    latest['dies_sense_compra'] = (today_ts - latest['data_ultim_pedido']).dt.days.fillna(999).astype(int)
+    latest['dies_historial'] = (today_ts - latest['data_primer_pedido']).dt.days.fillna(0).astype(int)
 
-    # Tendència: el share anualitzat dels últims 3 mesos (share_3m_annualized)
-    # ha caigut per sota del share_12m * RATIO_EN_RISC ?
+    # Tendència: comparar període recent vs baseline anual
+    # El període recent és dinàmic:
+    #   - clients freqüents (cicle < 60d): últims 3 mesos (mínim)
+    #   - clients trimestrals (cicle 60-120d): últims 6 mesos
+    #   - clients semestrals+ (cicle > 120d): NO s'avalua (massa irregular)
+    # Això evita falsos positius en clíniques que compren 1 cop/any
+    latest['finestra_recent_mesos'] = latest['cicle_mig_dies'].apply(
+        lambda c: 12 if (pd.notna(c) and c > 120) else (
+            6 if (pd.notna(c) and c > 60) else 3
+        )
+    )
+    # Clau: només detectar tendència si la finestra té sentit (≤ 12 mesos)
     latest['tendencia_negativa'] = (
-        (latest['share_3m_annualized'] < latest['share_12m'] * RATIO_EN_RISC)
+        (latest['finestra_recent_mesos'] <= 6)  # només clients prou freqüents
+        & (latest['share_3m_annualized'] < latest['share_12m'] * RATIO_EN_RISC)
         & (latest['num_intervals'] >= NUM_INTERVALS_MIN)
     )
 
@@ -373,7 +390,7 @@ def generate_alerts(segments, today, provincia_map=None, verbose=False):
             'potencial_anual_eur': round(row[POTENCIAL_COL], 2),
             'euros_12m': round(row['euros_12m'], 2),
             'gap_eur': round(row['gap_eur'], 2),
-            'dies_sense_compra': int(row['dies_sense_compra']),
+            'dies_sense_compra': int(row['dies_sense_compra']) if pd.notna(row['dies_sense_compra']) else 999,
             'num_intervals': int(row['num_intervals']) if pd.notna(row['num_intervals']) else 0,
             'data_alerta': today,
         }
