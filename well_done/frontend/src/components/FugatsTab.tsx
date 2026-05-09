@@ -17,58 +17,26 @@ export default function FugatsTab({ alerts, loading, onToggleTreated }: Props) {
     )
   }
 
+  if (alerts.length === 0) {
+    return (
+      <div style={styles.empty}>
+        <span style={styles.emptyIcon}>✓</span>
+        <span style={styles.emptyText}>Cap client fugat. Bona feina!</span>
+      </div>
+    )
+  }
+
   return (
     <div>
-      <div style={styles.header}>
-        <h2 style={styles.title}>Clients Fugats</h2>
-        <p style={styles.subtitle}>
-          Porten més d'un any sense comprar. Requereixen recuperació directa per delegat.
-        </p>
-      </div>
-
-      {alerts.length === 0 ? (
-        <div style={styles.empty}>
-          <span style={styles.emptyIcon}>✓</span>
-          <span style={styles.emptyText}>Cap client fugat. Bona feina!</span>
-        </div>
-      ) : (
-        <>
-          <div style={styles.count}>{alerts.length} fugats pendents de recuperació</div>
-          <div>
-            {alerts.map((a, i) => (
-              <AlertCard key={`fugat_${a.id_cliente}_${i}`} alert={a} onToggleTreated={onToggleTreated} />
-            ))}
-          </div>
-        </>
-      )}
+      <div style={styles.count}>{alerts.length.toLocaleString()} alertes</div>
+      {alerts.map((a, i) => (
+        <AlertCard key={`fugat_${a.id_cliente}_${i}`} alert={a} onToggleTreated={onToggleTreated} />
+      ))}
     </div>
   )
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  header: {
-    padding: '24px 0 16px',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 700,
-    color: '#111827',
-    margin: 0,
-    letterSpacing: -0.3,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#6B7280',
-    margin: '6px 0 0',
-  },
-  count: {
-    fontSize: 11,
-    fontWeight: 600,
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    paddingBottom: 12,
-  },
   empty: {
     display: 'flex',
     flexDirection: 'column',
@@ -92,5 +60,11 @@ const styles: Record<string, React.CSSProperties> = {
   emptyText: {
     fontSize: 14,
     color: '#6B7280',
+  },
+  count: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: '#6B7280',
+    paddingBottom: 12,
   },
 }
