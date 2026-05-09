@@ -27,12 +27,22 @@ Lo que quieren es un sistema tipo "CRM inteligente" que cada mañana les diga: "
 Dos modelos distintos bien justificados:
 
 ### Motor 1: Commodities (Anestesia, Bioseguridad)
-- Si una clínica consumía frecuentemente y su ciclo de reposición se retrasa, hay que llamar.
-- **Objetivo:** Clasificar cada cliente en leal / promiscuo / nulo / en riesgo y predecir cuándo contactar.
+- **El problema de la competencia invisible:** La competencia no se observa directamente. Hay que inferirla de forma razonable a partir del patrón de compra observado y del potencial relativo del cliente.
+- **Objetivo 1 - Clasificación:** El sistema debe distinguir entre clientes **leales** (compran mayormente a Inibsa) y clientes **promiscuos** (reparten su demanda con la competencia o compran a Inibsa a través de distribuidores/depósitos alternativos).
+- **Objetivo 2 - Solución accionable (Lo que debe permitir):**
+  1. Detectar demanda no capturada en clientes promiscuos.
+  2. Estimar el momento óptimo de contacto (retraso en el ciclo de reposición).
+  3. Identificar señales tempranas de deterioro en clientes estables/leales antes de que se vayan.
 
 ### Motor 2: Productos Técnicos (Biomateriales, Implantes)
-- El silencio puede ser normal o una alerta.
-- **Objetivo:** Detectar anomalías en el historial individual de cada cliente para predecir si un silencio superado a las X desviaciones estándar es señal de riesgo.
+- **Qué puede pasar:** Algunos clientes muestran recurrencia suficiente para detectar desviaciones.
+- **Qué no debe asumirse:** Esa regularidad no está garantizada y no debe leerse de forma rígida.
+- **Qué debe hacer la solución:** Distinguir entre variabilidad normal, desplazamiento temporal y deterioro real.
+- **Detectar (puntos extra):**
+  - Caída de frecuencia
+  - Caída de volumen
+  - Ausencia de compra
+  - Actividad anómala
 
 ## 🔧 Workflow Pipeline / Features (build_dataset.py)
 1. Parseo de formatos (comas por puntos decimales).
