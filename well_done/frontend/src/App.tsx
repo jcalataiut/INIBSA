@@ -3,6 +3,7 @@ import type { Alerta } from './types'
 import { getAlerts, markTreated, unmarkTreated, getTreated } from './api/client'
 import Header from './components/Header'
 import AlertList from './components/AlertList'
+import AlertDetail from './components/AlertDetail'
 import FugatsTab from './components/FugatsTab'
 
 const DIES = ['diumenge', 'dilluns', 'dimarts', 'dimecres', 'dijous', 'divendres', 'dissabte']
@@ -39,6 +40,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState<'briefing' | 'fugats' | 'tractades'>('briefing')
+  const [selectedAlert, setSelectedAlert] = useState<Alerta | null>(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -71,6 +73,24 @@ export default function App() {
     fetchData()
   }
 
+  if (selectedAlert) {
+    return (
+      <div style={styles.container}>
+        <Header activeTab={activeTab} onTabChange={setActiveTab} />
+        <div style={styles.content}>
+          <AlertDetail
+            alert={selectedAlert}
+            onBack={() => setSelectedAlert(null)}
+            onToggleTreated={async (a) => {
+              await handleToggleTreated(a)
+              setSelectedAlert(null)
+            }}
+          />
+        </div>
+      </div>
+    )
+  }
+
   const fugats = alerts.filter(a => a.segment === 'fugat')
   const noFugats = alerts.filter(a => a.segment !== 'fugat')
   const tractades = noFugats.filter(a => a.tractada)
@@ -99,13 +119,13 @@ export default function App() {
         ) : (
           <>
             {activeTab === 'briefing' && (
-              <AlertList alerts={pendents} loading={false} onToggleTreated={handleToggleTreated} listLabel="pendents" />
+              <AlertList alerts={pendents} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} />
             )}
             {activeTab === 'tractades' && (
-              <AlertList alerts={tractades} loading={false} onToggleTreated={handleToggleTreated} listLabel="tractades" />
+              <AlertList alerts={tractades} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} />
             )}
             {activeTab === 'fugats' && (
-              <FugatsTab alerts={fugats} loading={false} onToggleTreated={handleToggleTreated} />
+              <FugatsTab alerts={fugats} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} />
             )}
           </>
         )}

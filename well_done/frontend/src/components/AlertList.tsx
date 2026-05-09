@@ -5,10 +5,11 @@ interface Props {
   alerts: Alerta[]
   loading: boolean
   onToggleTreated: (a: Alerta) => void
+  onClickAlert?: (a: Alerta) => void
   listLabel?: string
 }
 
-export default function AlertList({ alerts, loading, onToggleTreated, listLabel }: Props) {
+export default function AlertList({ alerts, loading, onToggleTreated, onClickAlert, listLabel }: Props) {
   if (loading) {
     return (
       <div style={styles.empty}>
@@ -34,7 +35,7 @@ export default function AlertList({ alerts, loading, onToggleTreated, listLabel 
     <div>
       <div style={styles.count}>{alerts.length.toLocaleString()} alertes</div>
       {alerts.map((a, i) => (
-        <AlertCard key={`${a.id_cliente}_${a.familia_potencial}_${a.tipus_alerta}_${i}`} alert={a} onToggleTreated={onToggleTreated} />
+        <AlertCard key={`${a.id_cliente}_${a.familia_potencial}_${a.tipus_alerta}_${i}`} alert={a} onToggleTreated={onToggleTreated} onClick={onClickAlert} />
       ))}
     </div>
   )

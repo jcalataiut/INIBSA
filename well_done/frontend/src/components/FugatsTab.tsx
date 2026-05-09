@@ -5,9 +5,10 @@ interface Props {
   alerts: Alerta[]
   loading: boolean
   onToggleTreated: (a: Alerta) => void
+  onClickAlert?: (a: Alerta) => void
 }
 
-export default function FugatsTab({ alerts, loading, onToggleTreated }: Props) {
+export default function FugatsTab({ alerts, loading, onToggleTreated, onClickAlert }: Props) {
   if (loading) {
     return (
       <div style={styles.empty}>
@@ -30,7 +31,7 @@ export default function FugatsTab({ alerts, loading, onToggleTreated }: Props) {
     <div>
       <div style={styles.count}>{alerts.length.toLocaleString()} alertes</div>
       {alerts.map((a, i) => (
-        <AlertCard key={`fugat_${a.id_cliente}_${i}`} alert={a} onToggleTreated={onToggleTreated} />
+        <AlertCard key={`fugat_${a.id_cliente}_${i}`} alert={a} onToggleTreated={onToggleTreated} onClick={onClickAlert} />
       ))}
     </div>
   )

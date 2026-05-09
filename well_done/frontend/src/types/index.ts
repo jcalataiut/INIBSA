@@ -54,6 +54,14 @@ export const SEGMENT_COLORS: Record<string, string> = {
   fugat: '#E74C3C',
 }
 
+export interface ClientDetail {
+  id_cliente: number
+  cod_postal: string
+  provincia: string
+  historial: { fecha: string; factura: string; familia: string; valor: number; unitats: number }[]
+  alertes: { tipus_alerta: string; familia_potencial: string; prioritat: number; motiu: string }[]
+}
+
 export const ALERTA_LABELS: Record<string, string> = {
   finestra_captura: 'Finestra Captura',
   risc_fuga: 'Risc de Fuga',

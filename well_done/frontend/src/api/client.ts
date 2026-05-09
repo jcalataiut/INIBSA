@@ -1,4 +1,4 @@
-import type { Alerta, Stats, TreatedAlert } from '../types'
+import type { Alerta, Stats, TreatedAlert, ClientDetail } from '../types'
 
 const BASE = '/api'
 
@@ -48,4 +48,8 @@ export function markTreated(id_cliente: number, familia_potencial: string, tipus
 
 export function unmarkTreated(id: number): Promise<{ status: string }> {
   return fetchJSON(`/treated/${id}`, { method: 'DELETE' })
+}
+
+export function getClient(id: number): Promise<ClientDetail> {
+  return fetchJSON<ClientDetail>(`/clients/${id}`)
 }

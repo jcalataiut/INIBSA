@@ -4,16 +4,20 @@ import { SEGMENT_COLORS, ALERTA_LABELS } from '../types'
 interface Props {
   alert: Alerta
   onToggleTreated: (a: Alerta) => void
+  onClick?: (a: Alerta) => void
 }
 
-export default function AlertCard({ alert, onToggleTreated }: Props) {
+export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
   const prioColor = alert.prioritat >= 500 ? '#E74C3C' : alert.prioritat >= 100 ? '#E67E22' : '#6B7280'
   const borderColor = alert.tipus_alerta === 'finestra_captura' ? '#00B8A9'
     : alert.tipus_alerta === 'risc_fuga' ? '#E74C3C'
     : '#E5E7EB'
 
   return (
-    <div style={{ ...styles.card, borderLeft: `3px solid ${borderColor}`, opacity: alert.tractada ? 0.5 : 1 }}>
+    <div
+      style={{ ...styles.card, borderLeft: `3px solid ${borderColor}`, opacity: alert.tractada ? 0.5 : 1, cursor: onClick ? 'pointer' : 'default' }}
+      onClick={() => onClick?.(alert)}
+    >
       <div style={styles.mainRow}>
         <div style={styles.colClient}>
           <span style={styles.clientId}>#{alert.id_cliente}</span>
@@ -53,7 +57,7 @@ export default function AlertCard({ alert, onToggleTreated }: Props) {
         <div style={styles.colAction}>
           <button
             style={styles.actionBtn}
-            onClick={() => onToggleTreated(alert)}
+            onClick={e => { e.stopPropagation(); onToggleTreated(alert) }}
           >
             {alert.tractada ? '↩' : '✓'}
           </button>
