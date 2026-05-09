@@ -56,20 +56,27 @@ if analisis_mode == "Visión Global":
         st.plotly_chart(fig_prov, use_container_width=True)
 
     with colB:
-        st.subheader("Potencial vs. Ventas Reales (Top 50 Clientes)")
+        st.subheader("Potencial vs. Ventas (Anualizadas) (Top 50)")
+        # Calcular años totales en el dataset para anualizar las ventas
+        dias_totales = (df['Fecha'].max() - df['Fecha'].min()).days
+        anios_totales = dias_totales / 365.25 if dias_totales > 0 else 1
+        
         ventas_cliente = df.groupby(['Id_Cliente', 'Familia_Potencial']).agg(
-            Ventas_Reales=('Valores_H', 'sum'),
-            Potencial_EUR=('Potencial_EUR', 'first')
+            Ventas_Historicas=('Valores_H', 'sum'),
+            Potencial_EUR=('Potencial_EUR', 'first') # Potencial es anual
         ).reset_index()
         
-        # Filtrar a los top 50 por ventas
-        top_50 = ventas_cliente.nlargest(50, 'Ventas_Reales')
+        # Anualizar ventas para poder compararlas de forma justa con el potencial anual
+        ventas_cliente['Ventas_Anuales_Medias'] = ventas_cliente['Ventas_Historicas'] / anios_totales
         
-        fig_scatter = px.scatter(top_50, x='Potencial_EUR', y='Ventas_Reales', color='Familia_Potencial',
-                                 hover_data=['Id_Cliente'], title="Captura vs Potencial (Puntos bajo la diagonal indican potencial no capturado)")
+        # Filtrar a los top 50 por ventas
+        top_50 = ventas_cliente.nlargest(50, 'Ventas_Anuales_Medias')
+        
+        fig_scatter = px.scatter(top_50, x='Potencial_EUR', y='Ventas_Anuales_Medias', color='Familia_Potencial',
+                                 hover_data=['Id_Cliente'], title="Captura vs Potencial (Puntos bajo la diagonal = potencial no capturado)")
         
         # Añadir línea y=x (diagonal donde Ventas = Potencial)
-        max_val = top_50[['Potencial_EUR', 'Ventas_Reales']].max().max()
+        max_val = top_50[['Potencial_EUR', 'Ventas_Anuales_Medias']].max().max()
         fig_scatter.add_shape(type='line', line=dict(dash='dash'), x0=0, x1=max_val, y0=0, y1=max_val)
         st.plotly_chart(fig_scatter, use_container_width=True)
 
