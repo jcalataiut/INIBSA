@@ -24,11 +24,15 @@ alerts_path = 'commodities/alertes_20251201.csv'
 print("=" * 65)
 print("  ANÀLISI DE RESULTATS — MOTOR COMMODITIES")
 print("=" * 65)
-alerts = run(today=today, output_path=alerts_path)
+alerts, segments = run(today=today, output_path=alerts_path)
 
 if len(alerts) == 0:
     print("⚠️  Cap alerta generada.")
-    sys.exit(0)
+    # Tot i així, tenim segments
+    if len(segments) > 0:
+        print(f"   Hi ha {len(segments):,} (client, família) segmentats.")
+    else:
+        sys.exit(0)
 
 # ── 2. ESTADÍSTIQUES ─────────────────────────────────────────────────────────
 print(f"\n{'─' * 65}")
@@ -45,9 +49,12 @@ print(f"\n   Per tipus d'alerta:")
 for tipus, grp in alerts.groupby('tipus_alerta'):
     print(f"     {tipus:>30s}: {len(grp):>5d}  gap={grp['gap_eur'].sum():>8,.0f}€  prio_mig={grp['prioritat'].mean():>7.0f}")
 
-print(f"\n   Per segment:")
-for seg, grp in alerts.groupby('segment'):
-    print(f"     {seg:>12s}: {len(grp):>5d}  gap={grp['gap_eur'].sum():>8,.0f}€  share_mig={grp['share_12m'].mean():.0%}")
+print(f"\n   Per segment (TOTAL, no només alertes):")
+# Usar el DataFrame de segments complert (tots els client-família, no només alertes)
+for seg in ['fidel','promiscu','marginal','en_risc','nou','perdut']:
+    n = (segments['segment'] == seg).sum()
+    pct = n / len(segments) * 100
+    print(f"     {seg:>12s}: {n:>5d}  ({pct:5.1f}%)")
 
 # ── 3. QUALITAT ───────────────────────────────────────────────────────────────
 print(f"\n{'─' * 65}")
@@ -77,35 +84,42 @@ print(f"\n{'─' * 65}")
 print("   GENERANT PLOTS...")
 print(f"{'─' * 65}")
 
-# ── Plot 1: Segment distribution ────────────────────────────────────────────
+# ── Plot 1: Segment distribution (TOTAL client-família, no només alertes) ────
 fig, ax = plt.subplots(figsize=(10, 5))
 seg_order = ['fidel', 'promiscu', 'marginal', 'en_risc', 'nou', 'perdut']
-seg_count = alerts['segment'].value_counts()
+seg_count = segments['segment'].value_counts()
 seg_colors = {'fidel':'#2ecc71','promiscu':'#f1c40f','marginal':'#95a5a6',
               'en_risc':'#e67e22','nou':'#3498db','perdut':'#e74c3c'}
 bars = ax.bar([s for s in seg_order if s in seg_count],
-              [seg_count[s] for s in seg_order if s in seg_count],
-              color=[seg_colors[s] for s in seg_order if s in seg_count])
-for bar in bars:
-    ax.text(bar.get_x()+bar.get_width()/2, bar.get_height(), f'{bar.get_height():,}',
-            ha='center', va='bottom', fontweight='bold', fontsize=11)
-ax.set_title('Distribució per Segment (Alertes Commodities)', fontsize=14, fontweight='bold')
-ax.set_ylabel('Nombre d\'alertes')
+              [seg_count.get(s, 0) for s in seg_order],
+              color=[seg_colors[s] for s in seg_order])
+for bar, s in zip(bars, seg_order):
+    n = seg_count.get(s, 0)
+    pct = n / len(segments) * 100
+    ax.text(bar.get_x()+bar.get_width()/2, bar.get_height(),
+            f'{n:,}  ({pct:.1f}%)', ha='center', va='bottom', fontweight='bold', fontsize=10)
+ax.set_title('Distribució per Segment — TOTS els (client, família)', fontsize=14, fontweight='bold')
+ax.set_ylabel('Nombre de (client, família)')
 ax.spines[['top','right']].set_visible(False)
+ax.set_ylim(0, max(seg_count.values) * 1.15)
 plt.tight_layout()
 plt.savefig(f'{OUTPUT_DIR}/01_segment_dist.png', dpi=120)
 plt.close()
-print("   ✓ 01_segment_dist.png")
+print("   ✓ 01_segment_dist.png (distribució REAL, no només alertes)")
 
-# ── Plot 2: Share of wallet distribution per segment ─────────────────────────
+# ── Plot 2: Share of wallet distribution per segment (TOTAL) ─────────────────
 fig, ax = plt.subplots(figsize=(10, 5))
-sns.boxplot(data=alerts, x='segment', y='share_12m',
-            order=['fidel','promiscu','marginal','en_risc','nou','perdut'],
+sns.boxplot(data=segments, x='segment', y='share_12m',
+            order=seg_order,
             palette=seg_colors, ax=ax)
-ax.set_title('Share of Wallet per Segment', fontsize=14, fontweight='bold')
+ax.set_title('Share of Wallet per Segment — TOTS els (client, família)', fontsize=14, fontweight='bold')
 ax.set_ylabel('Share of Wallet (0–100%)')
 ax.set_xlabel('')
 ax.spines[['top','right']].set_visible(False)
+# Afegir nombre de mostres a sota
+for i, s in enumerate(seg_order):
+    n = seg_count.get(s, 0)
+    ax.text(i, -0.08, f'n={n:,}', ha='center', va='top', fontsize=9, transform=ax.get_xaxis_transform())
 plt.tight_layout()
 plt.savefig(f'{OUTPUT_DIR}/02_share_by_segment.png', dpi=120)
 plt.close()

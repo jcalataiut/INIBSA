@@ -637,12 +637,16 @@ def run(today=None, family=None, output_path=None, verbose=True):
             print(f"   Prioritat mitjana: {alerts['prioritat'].mean():.0f}")
 
     # ── Guardar ────────────────────────────────────────────────────────────
-    if output_path and len(alerts) > 0:
-        alerts.to_csv(output_path, index=False)
-        if verbose:
-            print(f"💾 Guardat a {output_path}")
+    if output_path:
+        if len(alerts) > 0:
+            alerts.to_csv(output_path, index=False)
+            if verbose:
+                print(f"💾 Guardat a {output_path}")
+        # Guardar també la segmentació completa per anàlisi
+        seg_path = output_path.replace('.csv', '_segments.csv')
+        segments.to_csv(seg_path, index=False)
 
-    return alerts
+    return alerts, segments
 
 
 # =============================================================================
