@@ -14,10 +14,10 @@ POTENCIAL_COL = "potencial_eur_anual"
 
 def load_data(today=None):
     engine = get_engine()
-    query = "SELECT * FROM ventas"
+    query = "SELECT * FROM ventas WHERE es_commodity = TRUE"
     params = {}
     if today:
-        query += " WHERE fecha <= :today"
+        query += " AND fecha <= :today"
         params["today"] = today
     df = pd.read_sql(text(query), engine, params=params)
     df["fecha"] = pd.to_datetime(df["fecha"])

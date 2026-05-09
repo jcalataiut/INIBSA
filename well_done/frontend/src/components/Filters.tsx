@@ -114,9 +114,9 @@ const styles: Record<string, React.CSSProperties> = {
     flexWrap: 'wrap' as const,
   },
   chip: {
-    background: '#1A1A1A',
-    border: '1px solid #2A2A2A',
-    color: '#9CA3AF',
+    background: '#FFFFFF',
+    border: '1px solid #D1D5DB',
+    color: '#6B7280',
     fontSize: 11,
     fontWeight: 500,
     padding: '4px 12px',
@@ -146,6 +146,6 @@ const styles: Record<string, React.CSSProperties> = {
   },
   toggleLabel: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#374151',
   },
 }

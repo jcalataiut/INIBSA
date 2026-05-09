@@ -4,10 +4,10 @@ interface Props { stats: Stats }
 
 export default function MetricsBar({ stats }: Props) {
   const items = [
-    { label: 'Alertes', value: stats.total_alertes.toLocaleString(), color: '#FFFFFF' },
-    { label: 'Pendents', value: stats.pendents.toLocaleString(), color: '#F4A261' },
+    { label: 'Alertes', value: stats.total_alertes.toLocaleString(), color: '#111827' },
+    { label: 'Pendents', value: stats.pendents.toLocaleString(), color: '#E67E22' },
     { label: 'Gap Total', value: `${stats.gap_total.toLocaleString()}€`, color: '#00B8A9' },
-    { label: 'Alta Urgència', value: stats.alta_urgencia.toLocaleString(), color: '#E76F51' },
+    { label: 'Alta Urgència', value: stats.alta_urgencia.toLocaleString(), color: '#E74C3C' },
   ]
 
   return (
@@ -34,8 +34,8 @@ const styles: Record<string, any> = {
     gap: 16,
   },
   card: {
-    background: '#111111',
-    border: '1px solid #1F1F1F',
+    background: '#FFFFFF',
+    border: '1px solid #E5E7EB',
     padding: '20px 24px',
     display: 'flex',
     flexDirection: 'column',

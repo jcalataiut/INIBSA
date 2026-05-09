@@ -7,13 +7,13 @@ interface Props {
 }
 
 export default function AlertCard({ alert, onToggleTreated }: Props) {
-  const prioColor = alert.prioritat >= 500 ? '#E76F51' : alert.prioritat >= 100 ? '#F4A261' : '#6B7280'
+  const prioColor = alert.prioritat >= 500 ? '#E74C3C' : alert.prioritat >= 100 ? '#E67E22' : '#6B7280'
   const borderColor = alert.tipus_alerta === 'finestra_captura' ? '#00B8A9'
-    : alert.tipus_alerta === 'risc_fuga' ? '#E76F51'
-    : '#1F1F1F'
+    : alert.tipus_alerta === 'risc_fuga' ? '#E74C3C'
+    : '#E5E7EB'
 
   return (
-    <div style={{ ...styles.card, borderLeft: `3px solid ${borderColor}`, opacity: alert.tractada ? 0.4 : 1 }}>
+    <div style={{ ...styles.card, borderLeft: `3px solid ${borderColor}`, opacity: alert.tractada ? 0.5 : 1 }}>
       <div style={styles.mainRow}>
         <div style={styles.colClient}>
           <span style={styles.clientId}>#{alert.id_cliente}</span>
@@ -24,7 +24,7 @@ export default function AlertCard({ alert, onToggleTreated }: Props) {
           <span style={styles.tipus}>{ALERTA_LABELS[alert.tipus_alerta] || alert.tipus_alerta}</span>
         </div>
         <div style={styles.colSegment}>
-          <span style={{ ...styles.segmentBadge, background: SEGMENT_COLORS[alert.segment] || '#555' }}>
+          <span style={{ ...styles.segmentBadge, background: SEGMENT_COLORS[alert.segment] || '#6B7280' }}>
             {alert.segment}
           </span>
           <span style={styles.share}>share { (alert.share_12m * 100).toFixed(0) }%</span>
@@ -71,8 +71,8 @@ export default function AlertCard({ alert, onToggleTreated }: Props) {
 
 const styles: Record<string, React.CSSProperties> = {
   card: {
-    background: '#111111',
-    border: '1px solid #1F1F1F',
+    background: '#FFFFFF',
+    border: '1px solid #E5E7EB',
     marginBottom: 6,
     transition: 'opacity 0.15s',
   },
@@ -84,11 +84,11 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
   },
   colClient: { display: 'flex', flexDirection: 'column', gap: 1 },
-  clientId: { fontSize: 14, fontWeight: 600, color: '#FFFFFF' },
+  clientId: { fontSize: 14, fontWeight: 600, color: '#111827' },
   provincia: { fontSize: 10, color: '#6B7280' },
   colFamilia: { display: 'flex', flexDirection: 'column', gap: 1 },
-  familia: { fontSize: 13, fontWeight: 500, color: '#E5E7EB' },
-  tipus: { fontSize: 10, color: '#9CA3AF' },
+  familia: { fontSize: 13, fontWeight: 500, color: '#111827' },
+  tipus: { fontSize: 10, color: '#6B7280' },
   colSegment: { display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' },
   segmentBadge: {
     fontSize: 10, fontWeight: 600, color: '#FFFFFF',
@@ -98,22 +98,22 @@ const styles: Record<string, React.CSSProperties> = {
   colGap: { display: 'flex', flexDirection: 'column', gap: 1 },
   gapValue: { fontSize: 16, fontWeight: 700, color: '#00B8A9' },
   gapLabel: { fontSize: 10, color: '#6B7280' },
-  stock: { fontSize: 10, color: '#F4A261' },
+  stock: { fontSize: 10, color: '#E67E22' },
   colDies: { display: 'flex', flexDirection: 'column', gap: 1 },
-  diesValue: { fontSize: 16, fontWeight: 600, color: '#E5E7EB' },
+  diesValue: { fontSize: 16, fontWeight: 600, color: '#111827' },
   diesLabel: { fontSize: 10, color: '#6B7280' },
   colPrio: { display: 'flex', flexDirection: 'column', gap: 1 },
   prioValue: { fontSize: 10, fontWeight: 700, letterSpacing: 0.5 },
   prioLabel: { fontSize: 10, color: '#6B7280' },
   colCanal: { display: 'flex', flexDirection: 'column', gap: 1 },
-  canalValue: { fontSize: 11, fontWeight: 500, color: '#E5E7EB' },
+  canalValue: { fontSize: 11, fontWeight: 500, color: '#111827' },
   urgenciaLabel: { fontSize: 10, color: '#6B7280', letterSpacing: 0.5 },
   colAction: { display: 'flex', justifyContent: 'center' },
   actionBtn: {
     width: 32, height: 32,
-    background: '#1A1A1A',
-    border: '1px solid #2A2A2A',
-    color: '#9CA3AF',
+    background: '#F9FAFB',
+    border: '1px solid #D1D5DB',
+    color: '#6B7280',
     fontSize: 14,
     cursor: 'pointer',
     display: 'flex',
@@ -123,7 +123,7 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'all 0.1s',
   },
   motiuRow: {
-    borderTop: '1px solid #1A1A1A',
+    borderTop: '1px solid #F3F4F6',
     padding: '8px 20px',
     display: 'flex',
     justifyContent: 'space-between',
@@ -138,7 +138,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   cicleInfo: {
     fontSize: 10,
-    color: '#4B5563',
+    color: '#9CA3AF',
     whiteSpace: 'nowrap',
   },
 }

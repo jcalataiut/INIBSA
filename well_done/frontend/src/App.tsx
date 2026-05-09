@@ -9,12 +9,12 @@ import FugatsTab from './components/FugatsTab'
 
 const globalStyles = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0A0A0A; color: #E5E7EB; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
+  body { background: #F3F4F6; color: #111827; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
   ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: #0F0F0F; }
-  ::-webkit-scrollbar-thumb { background: #2A2A2A; }
-  ::-webkit-scrollbar-thumb:hover { background: #3A3A3A; }
-  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
+  ::-webkit-scrollbar-track { background: #F3F4F6; }
+  ::-webkit-scrollbar-thumb { background: #D1D5DB; }
+  ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+  input[type="date"]::-webkit-calendar-picker-indicator { filter: none; cursor: pointer; }
   @keyframes spin { to { transform: rotate(360deg); } }
 `
 
@@ -113,8 +113,8 @@ export default function App() {
 const styles: Record<string, React.CSSProperties> = {
   container: {
     minHeight: '100vh',
-    background: '#0A0A0A',
-    color: '#E5E7EB',
+    background: '#F3F4F6',
+    color: '#111827',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
     display: 'flex',
     flexDirection: 'column',

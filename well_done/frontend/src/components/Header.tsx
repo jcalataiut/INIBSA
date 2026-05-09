@@ -48,8 +48,8 @@ export default function Header({ today, onTodayChange, activeTab, onTabChange }:
 
 const styles: Record<string, React.CSSProperties> = {
   wrapper: {
-    borderBottom: '1px solid #1F1F1F',
-    background: '#0F0F0F',
+    borderBottom: '1px solid #E5E7EB',
+    background: '#FFFFFF',
     position: 'sticky',
     top: 0,
     zIndex: 100,
@@ -75,13 +75,13 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
   },
   logoText: {
-    color: '#FFFFFF',
+    color: '#111827',
     fontSize: 18,
     fontWeight: 700,
     letterSpacing: 1,
   },
   logoDivider: {
-    color: '#333',
+    color: '#D1D5DB',
     margin: '0 8px',
   },
   logoSub: {
@@ -114,9 +114,9 @@ const styles: Record<string, React.CSSProperties> = {
   },
   right: {},
   dateInput: {
-    background: '#1A1A1A',
-    border: '1px solid #2A2A2A',
-    color: '#E5E7EB',
+    background: '#F9FAFB',
+    border: '1px solid #D1D5DB',
+    color: '#111827',
     padding: '8px 12px',
     fontSize: 13,
     fontFamily: "'Inter', sans-serif",
