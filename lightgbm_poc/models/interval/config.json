@@ -1,0 +1,40 @@
+{
+  "features": [
+    "Familia_Potencial",
+    "Provincia",
+    "mes",
+    "trimestre",
+    "dia_setmana",
+    "dia_anyo",
+    "Potencial_EUR_anual",
+    "euros_7d",
+    "euros_30d",
+    "euros_90d",
+    "euros_180d",
+    "euros_365d",
+    "n_pedidos_7d",
+    "n_pedidos_30d",
+    "n_pedidos_90d",
+    "n_pedidos_365d",
+    "ratio_30d_vs_90d",
+    "ratio_90d_vs_365d",
+    "share_wallet_12m",
+    "gap_eur",
+    "dies_desde_ultima_compra",
+    "cicle_mig_dies",
+    "cicle_std_dies",
+    "num_intervals"
+  ],
+  "quantiles": [
+    0.25,
+    0.5,
+    0.75
+  ],
+  "cat_feats": [
+    "Familia_Potencial",
+    "Provincia",
+    "mes",
+    "trimestre",
+    "dia_setmana"
+  ]
+}
