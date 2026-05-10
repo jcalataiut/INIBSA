@@ -26,7 +26,7 @@ const globalStyles = `
 `
 
 const TITLE: Record<string, string> = {
-  briefing: 'Briefing Diari',
+  briefing: 'Alertes del Dia',
   tractades: 'Tractades',
   fugats: 'Fugats',
   mapa: 'Mapa Geogràfic',

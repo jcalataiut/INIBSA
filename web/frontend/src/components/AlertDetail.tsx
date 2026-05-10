@@ -149,12 +149,13 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
             <span style={styles.heroSep}>·</span>
             <span style={styles.heroProv}>{alert.provincia || '?'}</span>
           </div>
-          <button
-            style={styles.treatBtn}
-            onClick={() => onToggleTreated(alert)}
-          >
-            {alert.tractada ? '↩' : '✓ Tractar'}
-          </button>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <button style={styles.actionBtn} onClick={() => window.alert(`📧 Simulant enviament de correu al client #${alert.id_cliente}...`)} title="Enviar correu">✉</button>
+            <button style={styles.actionBtn} onClick={() => window.alert(`📞 Simulant trucada al client #${alert.id_cliente}...`)} title="Trucar">📞</button>
+            <button style={styles.treatBtn} onClick={() => onToggleTreated(alert)}>
+              {alert.tractada ? '↩' : '✓ Tractar'}
+            </button>
+          </div>
         </div>
 
         {/* ── Chart OR Map ──────────────────────────────────── */}
@@ -438,6 +439,16 @@ const styles: Record<string, React.CSSProperties> = {
   heroProv: {
     fontSize: 13,
     color: '#6B7280',
+  },
+  actionBtn: {
+    background: '#F3F4F6',
+    border: '1px solid #D1D5DB',
+    color: '#374151',
+    fontSize: 14,
+    padding: '5px 9px',
+    cursor: 'pointer',
+    lineHeight: 1,
+    fontFamily: "'Inter', sans-serif",
   },
   treatBtn: {
     background: '#111827',

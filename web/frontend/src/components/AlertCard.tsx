@@ -80,6 +80,12 @@ export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
               {alert.urgencia.toUpperCase()}
             </span>
           )}
+          <button style={styles.actionBtn} onClick={e => { e.stopPropagation(); window.alert(`📧 Simulant enviament de correu al client #${alert.id_cliente}...`) }} title="Enviar correu">
+            ✉
+          </button>
+          <button style={styles.actionBtn} onClick={e => { e.stopPropagation(); window.alert(`📞 Simulant trucada al client #${alert.id_cliente}...`) }} title="Trucar">
+            📞
+          </button>
           <button style={styles.btn} onClick={e => { e.stopPropagation(); onToggleTreated(alert) }}>
             {alert.tractada ? '↩' : '✓'}
           </button>
@@ -174,6 +180,16 @@ const styles: Record<string, React.CSSProperties> = {
     textTransform: 'uppercase' as const,
     letterSpacing: 0.5,
     whiteSpace: 'nowrap' as const,
+  },
+  actionBtn: {
+    background: '#F3F4F6',
+    border: '1px solid #D1D5DB',
+    color: '#374151',
+    fontSize: 14,
+    padding: '5px 9px',
+    cursor: 'pointer',
+    lineHeight: 1,
+    fontFamily: "'Inter', sans-serif",
   },
   btn: {
     background: '#111827',

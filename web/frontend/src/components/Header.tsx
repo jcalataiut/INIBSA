@@ -9,10 +9,7 @@ export default function Header({ activeTab, onTabChange }: HeaderProps) {
       <div style={styles.inner}>
         <div style={styles.left}>
           <div style={styles.logo}>
-            <span style={styles.logoIcon}>◈</span>
-            <span style={styles.logoText}>INIBSA</span>
-            <span style={styles.logoDivider}>|</span>
-            <span style={styles.logoSub}>Senyals de Demanda Intel·ligent</span>
+            <img src="/logo.jpg" alt="Inibsa" style={styles.logoImg} />
           </div>
         </div>
         <div style={styles.center}>
@@ -21,7 +18,7 @@ export default function Header({ activeTab, onTabChange }: HeaderProps) {
               style={{ ...styles.tab, ...(activeTab === 'briefing' ? styles.tabActive : {}) }}
               onClick={() => onTabChange('briefing')}
             >
-              Briefing Diari
+              Alertes del Dia
             </button>
             <button
               style={{ ...styles.tab, ...(activeTab === 'tractades' ? styles.tabActive : {}) }}
@@ -72,25 +69,9 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: 8,
   },
-  logoIcon: {
-    color: '#00B8A9',
-    fontSize: 22,
-    fontWeight: 700,
-  },
-  logoText: {
-    color: '#111827',
-    fontSize: 18,
-    fontWeight: 700,
-    letterSpacing: 1,
-  },
-  logoDivider: {
-    color: '#D1D5DB',
-    margin: '0 8px',
-  },
-  logoSub: {
-    color: '#6B7280',
-    fontSize: 13,
-    fontWeight: 400,
+  logoImg: {
+    height: 32,
+    width: 'auto',
   },
   center: {},
   tabs: {
