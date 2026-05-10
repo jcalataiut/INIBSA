@@ -88,10 +88,12 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
   const visiblePurchases = purchases.filter(p => p.day <= hojeDay)
   const lastPurchaseDay = visiblePurchases.length > 0 ? visiblePurchases[visiblePurchases.length - 1].day : hojeDay
 
-  // Recalcular cicle EWM amb les dades disponibles fins al dia simulat
+  // Recalcular cicle EWM amb les dades disponibles fins al dia simulat.
+  // Només recalculem si realment estem simulant un passat on falten compres (per sota del total de l'historial)
+  // per evitar el "salt" inicial entre el cicle que ve del backend i el càlcul local.
   let simCicle = cicle
   let simCicleStd = cicleStd
-  if (simDay !== null && visiblePurchases.length >= 2) {
+  if (simDay !== null && visiblePurchases.length < purchases.length && visiblePurchases.length >= 2) {
     const gaps: number[] = []
     for (let i = 1; i < visiblePurchases.length; i++) {
       gaps.push(visiblePurchases[i].day - visiblePurchases[i - 1].day)
@@ -117,9 +119,11 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
   const chartW = W - PAD.left - PAD.right
   const chartH = H - PAD.top - PAD.bottom
   
-  // Ajustem l'escala de l'eix X perquè no s'allargui a l'infinit (evitem errors previs amb multiplicacions errònies)
-  const maxDayInData = Math.max(actualHojeDay, timelineDays, riskHigh)
-  const xMax = maxDayInData + Math.max(30, cicle * 0.4)
+  // Ajustem l'escala de l'eix X perquè no s'allargui a l'infinit.
+  // Fem servir un xMax estable basat en la realitat completa (no en la simulació) per evitar que el gràfic "salti".
+  const lastPurchaseDayReal = purchases.length > 0 ? purchases[purchases.length - 1].day : actualHojeDay
+  const riskHighReal = lastPurchaseDayReal + cicle + 1.5 * cicleStd
+  const xMax = Math.max(actualHojeDay, timelineDays, riskHighReal) + Math.max(30, cicle * 0.4)
   
   const xScale = (d: number) => PAD.left + (d / xMax) * chartW
   const yScale = (v: number) => PAD.top + chartH - (v / maxValor) * chartH * 0.85
@@ -139,7 +143,7 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
             <span style={styles.heroProv}>{alert.provincia || '?'}</span>
           </div>
           <button
-            style={styles.treatBtn}
+            style={{ ...styles.treatBtn, background: alert.tractada ? '#4B5563' : '#00B8A9' }}
             onClick={() => onToggleTreated(alert)}
           >
             {alert.tractada ? '↩' : '✓ Tractar'}
@@ -249,9 +253,12 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
             <input 
               type="range" 
               min={0} 
-              max={Math.max(actualHojeDay, timelineDays)} 
+              max={actualHojeDay} 
               value={hojeDay} 
-              onChange={(e) => setSimDay(Number(e.target.value))} 
+              onChange={(e) => {
+                const v = Number(e.target.value)
+                setSimDay(v >= actualHojeDay ? null : v)
+              }} 
               style={{ flex: 1 }}
             />
             <span style={{ fontSize: 13, color: '#6B7280', minWidth: 50, textAlign: 'right' }}>
@@ -331,11 +338,12 @@ const styles: Record<string, React.CSSProperties> = {
     background: '#111827',
     border: 'none',
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 600,
-    padding: '7px 16px',
+    fontSize: 13,
+    fontWeight: 700,
+    padding: '6px 16px',
     cursor: 'pointer',
     fontFamily: "'Inter', sans-serif",
+    lineHeight: 1,
   },
   chartSvg: {
     display: 'block',

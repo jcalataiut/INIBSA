@@ -155,7 +155,6 @@ const styles: Record<string, React.CSSProperties> = {
     position: 'fixed',
     inset: 0,
     background: 'rgba(0,0,0,0.4)',
-    backdropFilter: 'blur(4px)',
     zIndex: 200,
     display: 'flex',
     alignItems: 'center',
@@ -215,7 +214,6 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '6px 14px',
     cursor: 'pointer',
     fontFamily: "'Inter', sans-serif",
-    transition: 'all 0.1s',
   },
   chipActive: {
     background: '#00B8A9',

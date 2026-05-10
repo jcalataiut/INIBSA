@@ -91,10 +91,10 @@ export default function App() {
     )
   }
 
-  const fugats = alerts.filter(a => a.segment === 'fugat')
-  const noFugats = alerts.filter(a => a.segment !== 'fugat')
-  const tractades = noFugats.filter(a => a.tractada)
-  const pendents = noFugats.filter(a => !a.tractada)
+  const fugats = alerts.filter(a => a.tipus_alerta === 'fugat')
+  const actives = alerts.filter(a => a.tipus_alerta === 'anticipacio' || a.tipus_alerta === 'reactiva')
+  const tractades = actives.filter(a => a.tractada)
+  const pendents = actives.filter(a => !a.tractada)
 
   const today = new Date()
 

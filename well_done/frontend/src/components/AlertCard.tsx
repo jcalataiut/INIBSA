@@ -51,8 +51,11 @@ export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
               {alert.urgencia.toUpperCase()}
             </span>
           )}
-          <button style={styles.btn} onClick={e => { e.stopPropagation(); onToggleTreated(alert) }}>
-            {alert.tractada ? '↩' : '✓'}
+          <button 
+            style={{ ...styles.btn, background: alert.tractada ? '#4B5563' : '#00B8A9' }} 
+            onClick={e => { e.stopPropagation(); onToggleTreated(alert) }}
+          >
+            {alert.tractada ? '↩' : '✓ Tractar'}
           </button>
         </div>
       </div>
@@ -79,12 +82,9 @@ const styles: Record<string, React.CSSProperties> = {
   card: {
     background: '#FFFFFF',
     border: '1px solid #E5E7EB',
-    borderRadius: 6,
     padding: '16px 20px',
     marginBottom: 8,
     cursor: 'pointer',
-    transition: 'box-shadow 0.15s ease',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
   },
   top: {
     display: 'flex',
@@ -123,7 +123,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 11,
     fontWeight: 600,
     padding: '2px 8px',
-    borderRadius: 4,
     border: '1px solid',
     whiteSpace: 'nowrap' as const,
   },
@@ -132,7 +131,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     color: '#FFFFFF',
     padding: '3px 10px',
-    borderRadius: 4,
     textTransform: 'uppercase' as const,
     letterSpacing: 0.5,
     whiteSpace: 'nowrap' as const,
@@ -141,25 +139,21 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 10,
     fontWeight: 700,
     padding: '3px 10px',
-    borderRadius: 4,
     textTransform: 'uppercase' as const,
     letterSpacing: 0.5,
     whiteSpace: 'nowrap' as const,
   },
   btn: {
-    background: '#F3F4F6',
-    border: '1px solid #E5E7EB',
-    color: '#6B7280',
-    fontSize: 14,
+    background: '#111827',
+    border: 'none',
+    color: '#FFFFFF',
+    fontSize: 13,
     fontWeight: 700,
-    width: 32,
-    height: 32,
-    borderRadius: 6,
+    padding: '6px 16px',
     cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    fontFamily: "'Inter', sans-serif",
     marginLeft: 4,
+    lineHeight: 1,
   },
   bottom: {
     display: 'flex',

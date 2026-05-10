@@ -102,7 +102,6 @@ const styles: Record<string, React.CSSProperties> = {
     height: 64,
     cursor: 'pointer',
     letterSpacing: 0.3,
-    transition: 'color 0.1s, border-color 0.1s',
   },
   tabActive: {
     color: '#00B8A9',

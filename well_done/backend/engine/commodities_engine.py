@@ -421,11 +421,7 @@ def run(today=None, family=None, verbose=False):
             for tipus, count in alerts["tipus_alerta"].value_counts().items():
                 print(f"   {tipus:>15s}: {count}")
 
-    # ── 6. Cap d'alertes (només les top MAX_ALERTS) ────
-    if len(alerts) > MAX_ALERTS:
-        alerts = alerts.head(MAX_ALERTS)
-
-    # ── 7. Generar alertes de fugats ────────────────────
+    # ── 6. Generar alertes de fugats ────────────────────
     if verbose:
         print("👻 Generant llista de fugats (>365 dies)...", end=" ")
     fugats = generate_fugats(cycles, sow, today, prov_map)
