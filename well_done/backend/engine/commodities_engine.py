@@ -149,7 +149,57 @@ def calc_sow_and_gap(df, today):
     return sow
 
 
-def generate_alerts(cycles, sow, today, provincia_map=None):
+def calc_share_velocity(df, today):
+    """Calcula la velocitat del Share of Wallet (derivada mensual).
+
+    Per cada (client, família):
+      1. Agrega vendes per mes
+      2. Reindexa a tots els mesos del calendari
+      3. Calcula rolling 12m share
+      4. share_velocity = diferència mes a mes del share
+
+    Retorna:
+        DataFrame amb (id_cliente, familia_potencial, share_velocity)
+        share_velocity: canvi en punts percentuals respecte al mes anterior
+        None si el client no té dades suficients
+    """
+    today_ts = pd.Timestamp(today)
+
+    df_base = df[df["en_campana"] == 0].copy()
+    df_base["year_month"] = df_base["fecha"].dt.to_period("M")
+
+    monthly = df_base.groupby(["id_cliente", "familia_potencial", "year_month"]).agg(
+        euros_venuts=("valores_h", "sum"),
+        potencial_eur=(POTENCIAL_COL, "first"),
+    ).reset_index()
+    monthly["year_month_dt"] = monthly["year_month"].dt.to_timestamp()
+
+    records = []
+    for (cli, fam), grp in monthly.groupby(["id_cliente", "familia_potencial"]):
+        cm = grp.sort_values("year_month_dt").copy()
+        potencial = cm["potencial_eur"].iloc[0]
+        if potencial <= 0:
+            records.append({"id_cliente": cli, "familia_potencial": fam, "share_velocity": None})
+            continue
+
+        cm = cm.set_index("year_month_dt")
+        all_months = pd.date_range(cm.index.min(), today_ts, freq="MS")
+        cm = cm.reindex(all_months)
+        cm["euros_venuts"] = cm["euros_venuts"].fillna(0)
+        cm["potencial_eur"] = cm["potencial_eur"].ffill().bfill()
+
+        cm["rolling_12m"] = cm["euros_venuts"].rolling(12, min_periods=1).sum()
+        cm["share"] = (cm["rolling_12m"] / cm["potencial_eur"]).clip(0, 1)
+        cm["share_velocity"] = cm["share"].diff()
+
+        last_vel = cm["share_velocity"].iloc[-1]
+        last_vel = round(float(last_vel * 100), 2) if not pd.isna(last_vel) else None
+        records.append({"id_cliente": cli, "familia_potencial": fam, "share_velocity": last_vel})
+
+    return pd.DataFrame(records)
+
+
+def generate_alerts(cycles, sow, today, provincia_map=None, share_vel=None):
     """Genera alertes d'ANTICIPACIÓ i REACTIVA basades en la predicció de compra.
 
     Per cada (client, família) amb cicle calculat:
@@ -175,6 +225,12 @@ def generate_alerts(cycles, sow, today, provincia_map=None):
     data["gap_eur"] = data["gap_eur"].fillna(0)
     data["potencial_eur"] = data["potencial_eur"].fillna(0)
 
+    if share_vel is not None and len(share_vel) > 0:
+        data = data.merge(share_vel[["id_cliente", "familia_potencial", "share_velocity"]],
+                          on=["id_cliente", "familia_potencial"], how="left")
+    else:
+        data["share_velocity"] = None
+
     for _, row in data.iterrows():
         if pd.isna(row["cicle_mig_dies"]) or row["num_intervals"] < 1:
             continue
@@ -199,6 +255,15 @@ def generate_alerts(cycles, sow, today, provincia_map=None):
             continue
 
         # Base comuna de l'alerta
+        share_vel_val = row.get("share_velocity")
+        share_vel_val = round(float(share_vel_val), 2) if share_vel_val is not None and not (isinstance(share_vel_val, float) and np.isnan(share_vel_val)) else None
+        share_alerta = None
+        if share_vel_val is not None:
+            if share_vel_val < -5.0:
+                share_alerta = "fuga"
+            elif share_vel_val > 5.0:
+                share_alerta = "oportunitat"
+
         alert = {
             "id_cliente": int(row["id_cliente"]),
             "provincia": provincia_map.get(row["id_cliente"], "") if provincia_map else "",
@@ -215,6 +280,8 @@ def generate_alerts(cycles, sow, today, provincia_map=None):
             "cicle_std_dies": round(float(cicle_std), 1),
             "proxim_pedido_esperat": proper_pedido.strftime("%Y-%m-%d"),
             "data_alerta": today,
+            "share_velocity": share_vel_val,
+            "share_alerta": share_alerta,
         }
 
         # ═══════════════════════════════════════════════
@@ -352,6 +419,8 @@ def generate_fugats(cycles, sow, today, provincia_map=None):
                 + "Requereix recuperació."
             ),
             "data_alerta": today,
+            "share_velocity": None,
+            "share_alerta": None,
         }
         alerts.append(alert)
 
@@ -411,17 +480,29 @@ def run(today=None, family=None, verbose=False):
     prov_map = raw[["id_cliente", "provincia"]].drop_duplicates()
     prov_map = prov_map.groupby("id_cliente")["provincia"].first().to_dict()
 
-    # ── 5. Generar alertes principals ────────────────────
+    # ── 5. Share velocity (Velocitat del Share of Wallet) ─
+    if verbose:
+        print("📈 Share velocity (Velocitat del Share)...", end=" ")
+    share_vel = calc_share_velocity(raw, today)
+    if verbose:
+        n_amb_vel = share_vel["share_velocity"].notna().sum()
+        print(f"{len(share_vel):,} parelles ({n_amb_vel:,} amb velocitat)")
+
+    # ── 6. Generar alertes principals ────────────────────
     if verbose:
         print("🔔 Generant alertes (anticipació + reactiva)...", end=" ")
-    alerts = generate_alerts(cycles, sow, today, prov_map)
+    alerts = generate_alerts(cycles, sow, today, prov_map, share_vel)
     if verbose:
         print(f"{len(alerts):,} alertes generades")
         if len(alerts) > 0:
             for tipus, count in alerts["tipus_alerta"].value_counts().items():
                 print(f"   {tipus:>15s}: {count}")
+            share_alertes = alerts["share_alerta"].dropna().value_counts()
+            if len(share_alertes) > 0:
+                for tipus, count in share_alertes.items():
+                    print(f"   {'share_'+tipus:>15s}: {count}")
 
-    # ── 6. Generar alertes de fugats ────────────────────
+    # ── 7. Generar alertes de fugats ────────────────────
     if verbose:
         print("👻 Generant llista de fugats (>365 dies)...", end=" ")
     fugats = generate_fugats(cycles, sow, today, prov_map)

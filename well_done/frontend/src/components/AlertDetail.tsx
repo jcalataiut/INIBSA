@@ -141,9 +141,22 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
             <span style={styles.heroFam}>{alert.familia_potencial}</span>
             <span style={styles.heroSep}>·</span>
             <span style={styles.heroProv}>{alert.provincia || '?'}</span>
+            {alert.share_alerta && (
+              <>
+                <span style={styles.heroSep}>·</span>
+                <span style={{
+                  ...styles.shareAlertBadge,
+                  background: alert.share_alerta === 'fuga' ? '#FEE2E2' : '#ECFDF5',
+                  color: alert.share_alerta === 'fuga' ? '#991B1B' : '#065F46',
+                  borderColor: alert.share_alerta === 'fuga' ? '#FECACA' : '#A7F3D0',
+                }}>
+                  {alert.share_alerta === 'fuga' ? '🔴 FUGA' : '🟢 OPORTUNITAT'}
+                </span>
+              </>
+            )}
           </div>
           <button
-            style={{ ...styles.treatBtn, background: alert.tractada ? '#4B5563' : '#00B8A9' }}
+            style={{ ...styles.treatBtn, background: alert.tractada ? '#4B5563' : '#111827' }}
             onClick={() => onToggleTreated(alert)}
           >
             {alert.tractada ? '↩' : '✓ Tractar'}
@@ -285,6 +298,17 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
         <span style={styles.metric}>
           {simCicle > 0 ? `${simCicle.toFixed(0)}d` : '-'} <span style={styles.mLabel}>cicle{simCicleStd > 0 ? ` ±${simCicleStd.toFixed(0)}` : ''}</span>
         </span>
+        {alert.share_velocity !== null && alert.share_velocity !== undefined && (
+          <>
+            <span style={styles.mDiv}>|</span>
+            <span style={{
+              ...styles.metric,
+              color: alert.share_velocity < -5 ? '#DC2626' : alert.share_velocity > 5 ? '#059669' : '#6B7280',
+            }}>
+              {alert.share_velocity > 0 ? '+' : ''}{alert.share_velocity.toFixed(1)}pp <span style={styles.mLabel}>share vel.</span>
+            </span>
+          </>
+        )}
       </div>
     </div>
   )
@@ -344,6 +368,13 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     fontFamily: "'Inter', sans-serif",
     lineHeight: 1,
+  },
+  shareAlertBadge: {
+    fontSize: 10,
+    fontWeight: 700,
+    padding: '2px 8px',
+    border: '1px solid',
+    letterSpacing: 0.3,
   },
   chartSvg: {
     display: 'block',

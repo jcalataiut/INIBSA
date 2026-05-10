@@ -86,6 +86,8 @@ def init_db():
                 dies_stock NUMERIC,
                 prioritat NUMERIC,
                 motiu TEXT,
+                share_velocity NUMERIC,
+                share_alerta VARCHAR(20),
                 data_alerta DATE NOT NULL,
                 created_at TIMESTAMP DEFAULT NOW()
             )
@@ -138,6 +140,7 @@ COLS_CACHE = [
     "dies_sense_compra", "num_intervals", "cicle_mig_dies",
     "cicle_std_dies", "dies_retard", "z_score",
     "proxim_pedido_esperat", "dies_stock", "prioritat", "motiu",
+    "share_velocity", "share_alerta",
 ]
 
 def ensure_cache(today_str: str, family: str | None = None):

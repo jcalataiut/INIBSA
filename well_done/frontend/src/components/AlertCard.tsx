@@ -52,10 +52,10 @@ export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
             </span>
           )}
           <button 
-            style={{ ...styles.btn, background: alert.tractada ? '#4B5563' : '#00B8A9' }} 
+            style={styles.btn} 
             onClick={e => { e.stopPropagation(); onToggleTreated(alert) }}
           >
-            {alert.tractada ? '↩' : '✓ Tractar'}
+            {alert.tractada ? '↩' : '✓'}
           </button>
         </div>
       </div>
@@ -64,6 +64,15 @@ export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
         <Metric val={`${alert.gap_eur.toLocaleString(undefined, {maximumFractionDigits: 0})}€`} lbl="gap" />
         <Metric val={`${alert.dies_sense_compra}d`} lbl="sense compra" />
         <Metric val={alert.cicle_mig_dies ? `${alert.cicle_mig_dies.toFixed(0)}d` : '-'} lbl="cicle" />
+        {alert.share_velocity !== null && alert.share_velocity !== undefined && (
+          <span style={{
+            ...styles.velocityBadge,
+            color: alert.share_velocity < -5 ? '#DC2626' : alert.share_velocity > 5 ? '#059669' : '#6B7280',
+          }}>
+            {alert.share_velocity < -5 ? '↓' : alert.share_velocity > 5 ? '↑' : '→'}
+            {alert.share_velocity > 0 ? '+' : ''}{alert.share_velocity.toFixed(1)}pp
+          </span>
+        )}
       </div>
     </div>
   )
@@ -176,5 +185,11 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
     color: '#9CA3AF',
     fontWeight: 500,
+  },
+  velocityBadge: {
+    fontSize: 11,
+    fontWeight: 700,
+    fontVariantNumeric: 'tabular-nums',
+    marginLeft: 'auto' as const,
   },
 }

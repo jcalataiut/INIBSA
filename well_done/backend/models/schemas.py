@@ -11,6 +11,8 @@ class AlertaOut(BaseModel):
     urgencia: str
     canal: str
     share_12m: float
+    share_velocity: Optional[float] = None
+    share_alerta: Optional[str] = None
     potencial_anual_eur: float
     euros_12m: float
     gap_eur: float
