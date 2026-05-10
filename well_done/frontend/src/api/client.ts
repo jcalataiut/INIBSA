@@ -1,4 +1,4 @@
-import type { Alerta, Stats, TreatedAlert, ClientDetail } from '../types'
+import type { Alerta, Stats, TreatedAlert, ClientDetail, GeoContext } from '../types'
 
 const BASE = '/api'
 
@@ -52,4 +52,10 @@ export function unmarkTreated(id: number): Promise<{ status: string }> {
 
 export function getClient(id: number): Promise<ClientDetail> {
   return fetchJSON<ClientDetail>(`/clients/${id}`)
+}
+
+export function getGeoContext(family: string, today?: string): Promise<GeoContext> {
+  const qs = new URLSearchParams({ family })
+  if (today) qs.set('today', today)
+  return fetchJSON<GeoContext>(`/alerts/geo-context?${qs.toString()}`)
 }

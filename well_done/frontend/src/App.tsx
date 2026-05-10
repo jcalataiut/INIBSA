@@ -92,7 +92,9 @@ export default function App() {
   }
 
   const fugats = alerts.filter(a => a.tipus_alerta === 'fugat')
-  const actives = alerts.filter(a => a.tipus_alerta === 'anticipacio' || a.tipus_alerta === 'reactiva')
+  const actives = alerts.filter(
+    a => a.tipus_alerta === 'anticipacio' || a.tipus_alerta === 'reactiva' || a.tipus_alerta === 'geografica',
+  )
   const tractades = actives.filter(a => a.tractada)
   const pendents = actives.filter(a => !a.tractada)
 

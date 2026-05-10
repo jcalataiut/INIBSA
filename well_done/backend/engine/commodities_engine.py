@@ -31,12 +31,18 @@ from sqlalchemy import text
 from backend.database import get_engine
 from backend.config import (
     EWM_HALF_LIFE,
+    GEO_MIN_INDIVIDUAL_GAP,
+    GEO_MIN_NEIGHBORS,
+    GEO_MIN_SHARE_GAP,
+    GEO_NEIGHBOR_RADIUS_KM,
     PROB_ANTICIPACIO,
     MAX_ALERTS,
+    POSTAL_GEO_CSV,
 )
 
 POTENCIAL_COL = "potencial_eur_anual"
 DIES_FUGAT_THR = 365
+_POSTAL_LOOKUP_DF = None
 
 
 def load_data(today=None):
@@ -199,6 +205,215 @@ def calc_share_velocity(df, today):
     return pd.DataFrame(records)
 
 
+def normalize_postal_code(value):
+    if value is None or pd.isna(value):
+        return None
+    text_value = str(value).strip()
+    if not text_value:
+        return None
+    try:
+        return f"{int(float(text_value)):05d}"
+    except (TypeError, ValueError):
+        digits = "".join(ch for ch in text_value if ch.isdigit())
+        if not digits:
+            return None
+        return digits[:5].zfill(5)
+
+
+def load_postal_lookup():
+    global _POSTAL_LOOKUP_DF
+    if _POSTAL_LOOKUP_DF is None:
+        try:
+            lookup = pd.read_csv(POSTAL_GEO_CSV, dtype={"cod_postal": str})
+        except FileNotFoundError:
+            lookup = pd.DataFrame(columns=["cod_postal", "city", "latitude", "longitude"])
+        if not lookup.empty:
+            lookup["cod_postal"] = lookup["cod_postal"].apply(normalize_postal_code)
+            lookup = lookup.dropna(subset=["cod_postal", "latitude", "longitude"])
+            lookup = lookup.drop_duplicates(subset=["cod_postal"])
+        _POSTAL_LOOKUP_DF = lookup
+    return _POSTAL_LOOKUP_DF.copy()
+
+
+def build_geo_points(raw, today):
+    if raw.empty:
+        return pd.DataFrame(columns=[
+            "id_cliente", "familia_potencial", "share_12m", "gap_eur",
+            "cod_postal", "city", "provincia", "latitude", "longitude",
+        ])
+
+    sow = calc_sow_and_gap(raw, today)
+    latest_client = (
+        raw.sort_values(["id_cliente", "fecha"], ascending=[True, False])[
+            ["id_cliente", "cod_postal", "provincia"]
+        ]
+        .copy()
+    )
+    latest_client["cod_postal"] = latest_client["cod_postal"].apply(normalize_postal_code)
+    latest_client = latest_client.dropna(subset=["cod_postal"]).drop_duplicates(subset=["id_cliente"])
+
+    geo_lookup = load_postal_lookup()
+    points = sow.merge(latest_client, on="id_cliente", how="left")
+    points = points.merge(geo_lookup, on="cod_postal", how="left")
+    points["city"] = points["city"].fillna("").astype(str).str.strip()
+    points.loc[points["city"] == "", "city"] = points["provincia"].fillna("")
+    points = points.dropna(subset=["latitude", "longitude"]).copy()
+    points["latitude"] = pd.to_numeric(points["latitude"], errors="coerce")
+    points["longitude"] = pd.to_numeric(points["longitude"], errors="coerce")
+    points = points.dropna(subset=["latitude", "longitude"]).copy()
+    return points
+
+
+def haversine_km(lat1, lon1, latitudes, longitudes):
+    lat1_rad = np.radians(lat1)
+    lon1_rad = np.radians(lon1)
+    lat2_rad = np.radians(latitudes)
+    lon2_rad = np.radians(longitudes)
+
+    dlat = lat2_rad - lat1_rad
+    dlon = lon2_rad - lon1_rad
+    a = np.sin(dlat / 2) ** 2 + np.cos(lat1_rad) * np.cos(lat2_rad) * np.sin(dlon / 2) ** 2
+    return 6371.0 * 2 * np.arcsin(np.sqrt(a))
+
+
+def generate_geographical_alerts(cycles, sow, today, raw):
+    geo_points = build_geo_points(raw, today)
+    if geo_points.empty:
+        return pd.DataFrame(), geo_points
+
+    base = cycles.merge(sow, on=["id_cliente", "familia_potencial"], how="outer")
+    base = base.merge(
+        geo_points[["id_cliente", "familia_potencial", "cod_postal", "city", "provincia", "latitude", "longitude"]],
+        on=["id_cliente", "familia_potencial"],
+        how="inner",
+    )
+    base["share_12m"] = base["share_12m"].fillna(0)
+    base["gap_eur"] = base["gap_eur"].fillna(0)
+    base["euros_12m"] = base["euros_12m"].fillna(0)
+    base["potencial_eur"] = base["potencial_eur"].fillna(0)
+
+    alerts = []
+    for family, grp in base.groupby("familia_potencial"):
+        grp = grp.reset_index(drop=True).copy()
+        if len(grp) < GEO_MIN_NEIGHBORS + 1:
+            continue
+
+        latitudes = grp["latitude"].to_numpy(dtype=float)
+        longitudes = grp["longitude"].to_numpy(dtype=float)
+
+        for idx, row in grp.iterrows():
+            dists = haversine_km(row["latitude"], row["longitude"], latitudes, longitudes)
+            neighbours = grp[(dists > 0) & (dists <= GEO_NEIGHBOR_RADIUS_KM)].copy()
+            if len(neighbours) < GEO_MIN_NEIGHBORS:
+                continue
+
+            neighbours["distance_km"] = dists[(dists > 0) & (dists <= GEO_NEIGHBOR_RADIUS_KM)]
+            stronger = neighbours[
+                neighbours["share_12m"] >= row["share_12m"] + GEO_MIN_INDIVIDUAL_GAP
+            ].sort_values(["distance_km", "share_12m"], ascending=[True, False])
+            if len(stronger) < GEO_MIN_NEIGHBORS:
+                continue
+
+            top_neighbours = stronger.head(GEO_MIN_NEIGHBORS)
+            neighbour_avg_share = float(top_neighbours["share_12m"].mean())
+            share_gap = neighbour_avg_share - float(row["share_12m"])
+            if share_gap < GEO_MIN_SHARE_GAP:
+                continue
+
+            last_order_date = row.get("data_ultim_pedido")
+            dies_sense = int((pd.Timestamp(today) - last_order_date).days) if pd.notna(last_order_date) else 0
+            if dies_sense > DIES_FUGAT_THR:
+                continue
+
+            cicle = row["cicle_mig_dies"] if pd.notna(row.get("cicle_mig_dies")) else None
+            cicle_std = row["cicle_std_dies"] if pd.notna(row.get("cicle_std_dies")) else (cicle * 0.30 if cicle else None)
+            proper_pedido = (
+                last_order_date + pd.Timedelta(days=float(cicle))
+                if cicle is not None and pd.notna(last_order_date)
+                else None
+            )
+
+            if share_gap >= 0.35:
+                urgencia = "alta"
+                canal = "delegat"
+                urgencia_score = 3
+            elif share_gap >= 0.25:
+                urgencia = "mitjana"
+                canal = "delegat"
+                urgencia_score = 2
+            else:
+                urgencia = "baixa"
+                canal = "televenda"
+                urgencia_score = 1
+
+            neighbour_count = int(len(top_neighbours))
+            priority = round(
+                urgencia_score * 100000 + min(float(row["gap_eur"]), 99999) + share_gap * 1000,
+                2,
+            )
+            client_share_pct = round(float(row["share_12m"]) * 100)
+            neighbour_share_pct = round(neighbour_avg_share * 100)
+
+            alerts.append({
+                "id_cliente": int(row["id_cliente"]),
+                "provincia": row.get("provincia") or "",
+                "cod_postal": row.get("cod_postal"),
+                "city": row.get("city") or row.get("provincia") or "",
+                "latitude": round(float(row["latitude"]), 6),
+                "longitude": round(float(row["longitude"]), 6),
+                "familia_potencial": family,
+                "segment": "leal" if row["share_12m"] >= 0.70 else "promiscuo",
+                "segment_anterior": None,
+                "tipus_alerta": "geografica",
+                "urgencia": urgencia,
+                "canal": canal,
+                "share_12m": round(float(row["share_12m"]), 3),
+                "potencial_anual_eur": round(float(row["potencial_eur"]), 2),
+                "euros_12m": round(float(row["euros_12m"]), 2),
+                "gap_eur": round(float(row["gap_eur"]), 2),
+                "dies_sense_compra": dies_sense,
+                "num_intervals": int(row["num_intervals"]) if pd.notna(row.get("num_intervals")) else 0,
+                "cicle_mig_dies": round(float(cicle), 1) if cicle is not None else None,
+                "cicle_std_dies": round(float(cicle_std), 1) if cicle_std is not None else None,
+                "dies_retard": 0,
+                "z_score": None,
+                "proxim_pedido_esperat": proper_pedido.strftime("%Y-%m-%d") if proper_pedido is not None else None,
+                "dies_stock": None,
+                "prioritat": priority,
+                "motiu": (
+                    f"Geographical Alert: el client té un share del {client_share_pct}% a {family}. "
+                    f"{neighbour_count} clients propers (<= {int(GEO_NEIGHBOR_RADIUS_KM)} km) tenen una mitjana del "
+                    f"{neighbour_share_pct}%, cosa que indica demanda propera encara no capturada."
+                ),
+                "data_alerta": today,
+                "share_velocity": None,
+                "share_alerta": "oportunitat",
+                "geo_neighbor_count": neighbour_count,
+                "geo_neighbor_avg_share": round(neighbour_avg_share, 3),
+                "geo_share_gap": round(float(share_gap), 3),
+            })
+
+    alerts_df = pd.DataFrame(alerts) if alerts else pd.DataFrame()
+    if not alerts_df.empty:
+        alerts_df = alerts_df.sort_values("prioritat", ascending=False).reset_index(drop=True)
+    return alerts_df, geo_points
+
+
+def get_geographical_context(today=None, family=None):
+    if today is None:
+        today = datetime.now().strftime("%Y-%m-%d")
+    if isinstance(today, datetime):
+        today = today.strftime("%Y-%m-%d")
+
+    raw = load_data(today=today)
+    if family:
+        raw = raw[raw["familia_potencial"] == family]
+    points = build_geo_points(raw, today)
+    if points.empty:
+        return points
+    return points.sort_values(["share_12m", "gap_eur"], ascending=[False, False]).reset_index(drop=True)
+
+
 def generate_alerts(cycles, sow, today, provincia_map=None, share_vel=None):
     """Genera alertes d'ANTICIPACIÓ i REACTIVA basades en la predicció de compra.
 
@@ -267,6 +482,10 @@ def generate_alerts(cycles, sow, today, provincia_map=None, share_vel=None):
         alert = {
             "id_cliente": int(row["id_cliente"]),
             "provincia": provincia_map.get(row["id_cliente"], "") if provincia_map else "",
+            "cod_postal": None,
+            "city": None,
+            "latitude": None,
+            "longitude": None,
             "familia_potencial": row["familia_potencial"],
             "segment": "leal" if row["share_12m"] >= 0.70 else "promiscuo",
             "segment_anterior": None,
@@ -282,6 +501,9 @@ def generate_alerts(cycles, sow, today, provincia_map=None, share_vel=None):
             "data_alerta": today,
             "share_velocity": share_vel_val,
             "share_alerta": share_alerta,
+            "geo_neighbor_count": None,
+            "geo_neighbor_avg_share": None,
+            "geo_share_gap": None,
         }
 
         # ═══════════════════════════════════════════════
@@ -393,6 +615,10 @@ def generate_fugats(cycles, sow, today, provincia_map=None):
         alert = {
             "id_cliente": int(row["id_cliente"]),
             "provincia": provincia_map.get(row["id_cliente"], "") if provincia_map else "",
+            "cod_postal": None,
+            "city": None,
+            "latitude": None,
+            "longitude": None,
             "familia_potencial": row["familia_potencial"],
             "segment": "fugat",
             "segment_anterior": None,
@@ -421,6 +647,9 @@ def generate_fugats(cycles, sow, today, provincia_map=None):
             "data_alerta": today,
             "share_velocity": None,
             "share_alerta": None,
+            "geo_neighbor_count": None,
+            "geo_neighbor_avg_share": None,
+            "geo_share_gap": None,
         }
         alerts.append(alert)
 
@@ -502,7 +731,17 @@ def run(today=None, family=None, verbose=False):
                 for tipus, count in share_alertes.items():
                     print(f"   {'share_'+tipus:>15s}: {count}")
 
-    # ── 7. Generar alertes de fugats ────────────────────
+    # ── 7. Generar alertes geogràfiques ────────────────
+    if verbose:
+        print("🗺️  Generant alertes geogràfiques...", end=" ")
+    geo_alerts, geo_points = generate_geographical_alerts(cycles, sow, today, raw)
+    if verbose:
+        print(f"{len(geo_alerts)} alertes · {len(geo_points)} punts geolocalitzats")
+
+    if not geo_alerts.empty:
+        alerts = pd.concat([alerts, geo_alerts], ignore_index=True)
+
+    # ── 8. Generar alertes de fugats ────────────────────
     if verbose:
         print("👻 Generant llista de fugats (>365 dies)...", end=" ")
     fugats = generate_fugats(cycles, sow, today, prov_map)
@@ -513,7 +752,10 @@ def run(today=None, family=None, verbose=False):
     # Combinar: fugats van al final (baixa prioritat)
     alerts = pd.concat([alerts, fugats], ignore_index=True) if not fugats.empty else alerts
 
-    # ── 8. Top alertes ───────────────────────────────────
+    if len(alerts) > 0 and "prioritat" in alerts.columns:
+        alerts = alerts.sort_values("prioritat", ascending=False).head(MAX_ALERTS).reset_index(drop=True)
+
+    # ── 9. Top alertes ───────────────────────────────────
     actives = alerts[alerts["tipus_alerta"] != "fugat"] if len(alerts) > 0 else pd.DataFrame()
     if verbose and len(actives) > 0:
         print(f"\n{'─' * 60}")
@@ -526,7 +768,7 @@ def run(today=None, family=None, verbose=False):
             print(f"   Pròxim pedido: {a['proxim_pedido_esperat']}  |  Cicle: {a['cicle_mig_dies']:.0f}d")
             print(f"   {a['motiu'][:130]}")
 
-    # ── 9. Resum ─────────────────────────────────────────
+    # ── 10. Resum ────────────────────────────────────────
     if verbose:
         gap_total = alerts["gap_eur"].sum() if len(alerts) > 0 else 0
         n_actius = alerts[alerts["tipus_alerta"] != "fugat"]["id_cliente"].nunique() if len(alerts) > 0 else 0

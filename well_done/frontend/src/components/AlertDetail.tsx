@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import type { Alerta, ClientDetail } from '../types'
-import { getClient } from '../api/client'
+import type { Alerta, ClientDetail, GeoContext } from '../types'
+import { getClient, getGeoContext } from '../api/client'
+import GeoAlertMap from './GeoAlertMap'
 
 interface Props {
   alert: Alerta
@@ -17,6 +18,8 @@ interface Purchase {
 export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
   const [data, setData] = useState<ClientDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [geoContext, setGeoContext] = useState<GeoContext | null>(null)
+  const [geoLoading, setGeoLoading] = useState(false)
   const [simDay, setSimDay] = useState<number | null>(null)
 
   useEffect(() => {
@@ -24,14 +27,34 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
     getClient(alert.id_cliente).then(d => { setData(d); setLoading(false) }).catch(() => setLoading(false))
   }, [alert.id_cliente])
 
+  useEffect(() => {
+    if (alert.tipus_alerta !== 'geografica') {
+      setGeoContext(null)
+      setGeoLoading(false)
+      return
+    }
+    setGeoLoading(true)
+    getGeoContext(alert.familia_potencial)
+      .then(context => {
+        setGeoContext(context)
+        setGeoLoading(false)
+      })
+      .catch(() => {
+        setGeoContext(null)
+        setGeoLoading(false)
+      })
+  }, [alert.familia_potencial, alert.tipus_alerta])
+
   const borderColor = alert.tipus_alerta === 'anticipacio' ? '#00B8A9'
     : alert.tipus_alerta === 'reactiva' ? '#E74C3C'
+    : alert.tipus_alerta === 'geografica' ? '#2563EB'
     : alert.tipus_alerta === 'fugat' ? '#6B7280'
     : '#E5E7EB'
 
   const isLeal = alert.share_12m >= 0.70
   const shareLabel = isLeal ? 'leal' : 'promiscuo'
   const shareColor = isLeal ? '#00B8A9' : '#F4A261'
+  const locationLabel = [alert.city, alert.cod_postal, alert.provincia].filter(Boolean).join(' · ') || alert.provincia || '?'
 
   // ── Build purchase timeline ────────────────────────────
   const historial = data?.historial?.filter(h => h.familia === alert.familia_potencial).reverse() || []
@@ -140,7 +163,7 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
             <span style={styles.heroSep}>·</span>
             <span style={styles.heroFam}>{alert.familia_potencial}</span>
             <span style={styles.heroSep}>·</span>
-            <span style={styles.heroProv}>{alert.provincia || '?'}</span>
+            <span style={styles.heroProv}>{locationLabel}</span>
             {alert.share_alerta && (
               <>
                 <span style={styles.heroSep}>·</span>
@@ -164,7 +187,13 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
         </div>
 
         {/* ── Chart ──────────────────────────────────── */}
-        {loading ? (
+        {alert.tipus_alerta === 'geografica' ? (
+          geoLoading ? (
+            <p style={{ color: '#9CA3AF', fontSize: 13, padding: '40px 0', textAlign: 'center' }}>Carregant mapa geogràfic...</p>
+          ) : (
+            <GeoAlertMap alert={alert} points={geoContext?.points || []} />
+          )
+        ) : loading ? (
           <p style={{ color: '#9CA3AF', fontSize: 13, padding: '40px 0', textAlign: 'center' }}>Carregant historial...</p>
         ) : purchases.length === 0 ? (
           <p style={{ color: '#9CA3AF', fontSize: 13, padding: '40px 0', textAlign: 'center' }}>Sense historial de compres</p>
@@ -306,6 +335,22 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
               color: alert.share_velocity < -5 ? '#DC2626' : alert.share_velocity > 5 ? '#059669' : '#6B7280',
             }}>
               {alert.share_velocity > 0 ? '+' : ''}{alert.share_velocity.toFixed(1)}pp <span style={styles.mLabel}>share vel.</span>
+            </span>
+          </>
+        )}
+        {alert.tipus_alerta === 'geografica' && alert.geo_neighbor_avg_share !== null && alert.geo_neighbor_avg_share !== undefined && (
+          <>
+            <span style={styles.mDiv}>|</span>
+            <span style={{ ...styles.metric, color: '#2563EB' }}>
+              {(alert.geo_neighbor_avg_share * 100).toFixed(0)}% <span style={styles.mLabel}>mitjana veïns</span>
+            </span>
+          </>
+        )}
+        {alert.tipus_alerta === 'geografica' && alert.geo_share_gap !== null && alert.geo_share_gap !== undefined && (
+          <>
+            <span style={styles.mDiv}>|</span>
+            <span style={{ ...styles.metric, color: '#1D4ED8' }}>
+              +{(alert.geo_share_gap * 100).toFixed(0)}pp <span style={styles.mLabel}>oportunitat geo</span>
             </span>
           </>
         )}

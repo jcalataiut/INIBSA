@@ -15,13 +15,18 @@ const URG: Record<string, { bg: string; txt: string }> = {
 
 export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
   const isFugat = alert.segment === 'fugat'
+  const isGeo = alert.tipus_alerta === 'geografica'
   const shareLabel = isFugat ? 'fugat' : (alert.share_12m >= 0.70 ? 'leal' : 'promiscuo')
   const shareColor = isFugat ? '#6B7280' : (alert.share_12m >= 0.70 ? '#059669' : '#D97706')
 
   const tipusLabel = alert.tipus_alerta === 'anticipacio' ? 'ANTICIPAT'
-    : alert.tipus_alerta === 'reactiva' ? 'REACTIVA' : 'FUGAT'
+    : alert.tipus_alerta === 'reactiva' ? 'REACTIVA'
+    : alert.tipus_alerta === 'geografica' ? 'GEO'
+    : 'FUGAT'
   const tipusColor = alert.tipus_alerta === 'anticipacio' ? '#059669'
-    : alert.tipus_alerta === 'reactiva' ? '#DC2626' : '#6B7280'
+    : alert.tipus_alerta === 'reactiva' ? '#DC2626'
+    : alert.tipus_alerta === 'geografica' ? '#2563EB'
+    : '#6B7280'
 
   const urg = URG[alert.urgencia] || URG.baixa
 
@@ -35,6 +40,12 @@ export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
           <span style={styles.id}>#{alert.id_cliente}</span>
           <span style={styles.sep}>·</span>
           <span style={styles.familia}>{alert.familia_potencial}</span>
+          {isGeo && alert.city && (
+            <>
+              <span style={styles.sep}>·</span>
+              <span style={styles.location}>{alert.city}{alert.cod_postal ? ` ${alert.cod_postal}` : ''}</span>
+            </>
+          )}
           {!isFugat && (
             <>
               <span style={styles.sep}>·</span>
@@ -64,6 +75,12 @@ export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
         <Metric val={`${alert.gap_eur.toLocaleString(undefined, {maximumFractionDigits: 0})}€`} lbl="gap" />
         <Metric val={`${alert.dies_sense_compra}d`} lbl="sense compra" />
         <Metric val={alert.cicle_mig_dies ? `${alert.cicle_mig_dies.toFixed(0)}d` : '-'} lbl="cicle" />
+        {isGeo && alert.geo_neighbor_count !== null && alert.geo_neighbor_count !== undefined && (
+          <Metric val={String(alert.geo_neighbor_count)} lbl="veïns forts" />
+        )}
+        {isGeo && alert.geo_neighbor_avg_share !== null && alert.geo_neighbor_avg_share !== undefined && (
+          <Metric val={`${(alert.geo_neighbor_avg_share * 100).toFixed(0)}%`} lbl="share veïns" />
+        )}
         {alert.share_velocity !== null && alert.share_velocity !== undefined && (
           <span style={{
             ...styles.velocityBadge,
@@ -127,6 +144,10 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 14,
     fontWeight: 500,
     color: '#374151',
+  },
+  location: {
+    fontSize: 12,
+    color: '#6B7280',
   },
   shareBadge: {
     fontSize: 11,

@@ -66,6 +66,10 @@ def init_db():
                 id SERIAL PRIMARY KEY,
                 id_cliente INTEGER NOT NULL,
                 provincia VARCHAR(100),
+                cod_postal VARCHAR(20),
+                city VARCHAR(120),
+                latitude NUMERIC,
+                longitude NUMERIC,
                 familia_potencial VARCHAR(50),
                 segment VARCHAR(20),
                 segment_anterior VARCHAR(20),
@@ -88,10 +92,20 @@ def init_db():
                 motiu TEXT,
                 share_velocity NUMERIC,
                 share_alerta VARCHAR(20),
+                geo_neighbor_count INTEGER,
+                geo_neighbor_avg_share NUMERIC,
+                geo_share_gap NUMERIC,
                 data_alerta DATE NOT NULL,
                 created_at TIMESTAMP DEFAULT NOW()
             )
         """))
+        conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS cod_postal VARCHAR(20)"))
+        conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS city VARCHAR(120)"))
+        conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS latitude NUMERIC"))
+        conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS longitude NUMERIC"))
+        conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS geo_neighbor_count INTEGER"))
+        conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS geo_neighbor_avg_share NUMERIC"))
+        conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS geo_share_gap NUMERIC"))
         conn.execute(text("""
             CREATE INDEX IF NOT EXISTS idx_cache_data ON alertes_cache(data_alerta)
         """))
@@ -134,13 +148,13 @@ def clear_cache(today: str):
         conn.execute(text("DELETE FROM alertes_cache WHERE data_alerta = :today"), {"today": today})
 
 COLS_CACHE = [
-    "id_cliente", "provincia", "familia_potencial", "segment",
+    "id_cliente", "provincia", "cod_postal", "city", "latitude", "longitude", "familia_potencial", "segment",
     "segment_anterior", "tipus_alerta", "urgencia", "canal",
     "share_12m", "potencial_anual_eur", "euros_12m", "gap_eur",
     "dies_sense_compra", "num_intervals", "cicle_mig_dies",
     "cicle_std_dies", "dies_retard", "z_score",
     "proxim_pedido_esperat", "dies_stock", "prioritat", "motiu",
-    "share_velocity", "share_alerta",
+    "share_velocity", "share_alerta", "geo_neighbor_count", "geo_neighbor_avg_share", "geo_share_gap",
 ]
 
 def ensure_cache(today_str: str, family: str | None = None):
@@ -151,7 +165,15 @@ def ensure_cache(today_str: str, family: str | None = None):
             text("SELECT COUNT(*) FROM alertes_cache WHERE data_alerta = :today"),
             {"today": today_str}
         ).scalar()
-    if cached > 0:
+        geo_ready = conn.execute(
+            text("""
+                SELECT COUNT(*) FROM alertes_cache
+                WHERE data_alerta = :today
+                  AND (tipus_alerta = 'geografica' OR cod_postal IS NOT NULL)
+            """),
+            {"today": today_str}
+        ).scalar()
+    if cached > 0 and geo_ready > 0:
         return
     clear_cache(today_str)
     try:
