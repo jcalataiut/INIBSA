@@ -1,6 +1,6 @@
 interface HeaderProps {
-  activeTab: 'briefing' | 'fugats' | 'tractades'
-  onTabChange: (t: 'briefing' | 'fugats' | 'tractades') => void
+  activeTab: 'briefing' | 'fugats' | 'tractades' | 'mapa'
+  onTabChange: (t: 'briefing' | 'fugats' | 'tractades' | 'mapa') => void
 }
 
 export default function Header({ activeTab, onTabChange }: HeaderProps) {
@@ -34,6 +34,12 @@ export default function Header({ activeTab, onTabChange }: HeaderProps) {
               onClick={() => onTabChange('fugats')}
             >
               Fugats
+            </button>
+            <button
+              style={{ ...styles.tab, ...(activeTab === 'mapa' ? styles.tabActive : {}) }}
+              onClick={() => onTabChange('mapa')}
+            >
+              Mapa
             </button>
           </div>
         </div>

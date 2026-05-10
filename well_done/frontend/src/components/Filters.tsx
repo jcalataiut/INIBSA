@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 interface Props {
+  activeFamilia: 'commodities' | 'technicals'
   filterSegment: string[]
   filterTipus: string[]
   filterUrgencia: string[]
@@ -11,8 +12,11 @@ interface Props {
   onShowTreatedChange: (v: boolean) => void
 }
 
-const SEGMENTS = ['leal', 'promiscuo', 'actiu_regular', 'actiu_esporadic', 'inactiu_recent', 'inactiu_total', 'fugat']
-const TIPUS = ['anticipacio', 'reactiva', 'anomalia_groga', 'anomalia_vermella', 'monitoritzar', 'fugat']
+const COMMODITIES_SEGMENTS = ['leal', 'promiscuo', 'fugat']
+const COMMODITIES_TIPUS = ['anticipacio', 'reactiva', 'fugat', 'geographical_alert']
+
+const TECHNICALS_SEGMENTS = ['actiu_regular', 'actiu_esporadic', 'inactiu_recent', 'inactiu_total', 'fugat']
+const TECHNICALS_TIPUS = ['anomalia_groga', 'anomalia_vermella', 'monitoritzar', 'caiguda_volum', 'fugat', 'geographical_alert']
 
 const LABEL_SEG: Record<string, string> = {
   leal: 'Leal', promiscuo: 'Promiscuo',
@@ -26,7 +30,9 @@ const LABEL_TIPUS: Record<string, string> = {
   anticipacio: 'Anticipació', reactiva: 'Reactiva',
   anomalia_groga: 'Anomalia Groga', anomalia_vermella: 'Anomalia Vermella',
   monitoritzar: 'Monitoritzar',
+  caiguda_volum: 'Caiguda Volum',
   fugat: 'Fugat',
+  geographical_alert: 'Alerta Geogràfica',
 }
 
 export default function Filters(props: Props) {
@@ -34,6 +40,9 @@ export default function Filters(props: Props) {
 
   const activeCount =
     props.filterSegment.length + props.filterTipus.length + props.filterUrgencia.length
+
+  const currentSegments = props.activeFamilia === 'commodities' ? COMMODITIES_SEGMENTS : TECHNICALS_SEGMENTS
+  const currentTipus = props.activeFamilia === 'commodities' ? COMMODITIES_TIPUS : TECHNICALS_TIPUS
 
   return (
     <>
@@ -54,7 +63,7 @@ export default function Filters(props: Props) {
             <div style={styles.section}>
               <span style={styles.sectionLabel}>Segment</span>
               <div style={styles.chips}>
-                {SEGMENTS.map(s => (
+                {currentSegments.map(s => (
                   <button
                     key={s}
                     style={{ ...styles.chip, ...(props.filterSegment.includes(s) ? styles.chipActive : {}) }}
@@ -74,7 +83,7 @@ export default function Filters(props: Props) {
             <div style={styles.section}>
               <span style={styles.sectionLabel}>Tipus</span>
               <div style={styles.chips}>
-                {TIPUS.map(t => (
+                {currentTipus.map(t => (
                   <button
                     key={t}
                     style={{ ...styles.chip, ...(props.filterTipus.includes(t) ? styles.chipActive : {}) }}

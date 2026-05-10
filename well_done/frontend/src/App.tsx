@@ -6,6 +6,7 @@ import AlertList from './components/AlertList'
 import AlertDetail from './components/AlertDetail'
 import FugatsTab from './components/FugatsTab'
 import Filters from './components/Filters'
+import MapView from './components/MapView'
 
 const DIES = ['diumenge', 'dilluns', 'dimarts', 'dimecres', 'dijous', 'divendres', 'dissabte']
 const MESOS = ['gener', 'febrer', 'març', 'abril', 'maig', 'juny', 'juliol', 'agost', 'setembre', 'octubre', 'novembre', 'desembre']
@@ -28,6 +29,7 @@ const TITLE: Record<string, string> = {
   briefing: 'Briefing Diari',
   tractades: 'Tractades',
   fugats: 'Fugats',
+  mapa: 'Mapa Geogràfic',
 }
 
 export default function App() {
@@ -40,7 +42,7 @@ export default function App() {
   const [alerts, setAlerts] = useState<Alerta[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [activeTab, setActiveTab] = useState<'briefing' | 'fugats' | 'tractades'>('briefing')
+  const [activeTab, setActiveTab] = useState<'briefing' | 'fugats' | 'tractades' | 'mapa'>('briefing')
   const [selectedAlert, setSelectedAlert] = useState<Alerta | null>(null)
   const [familiaFilter, setFamiliaFilter] = useState<'commodities' | 'technicals'>('commodities')
 
@@ -136,6 +138,7 @@ export default function App() {
           <h1 style={styles.title}>{TITLE[activeTab]}</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Filters
+              activeFamilia={familiaFilter}
               filterSegment={filterSegment}
               filterTipus={filterTipus}
               filterUrgencia={filterUrgencia}
@@ -148,11 +151,19 @@ export default function App() {
             <div style={styles.toggle}>
               <button
                 style={{ ...styles.toggleBtn, ...(familiaFilter === 'commodities' ? styles.toggleActive : {}) }}
-                onClick={() => setFamiliaFilter('commodities')}
+                onClick={() => {
+                  setFamiliaFilter('commodities')
+                  setFilterSegment([])
+                  setFilterTipus([])
+                }}
               >Commodities</button>
               <button
                 style={{ ...styles.toggleBtn, ...(familiaFilter === 'technicals' ? styles.toggleActive : {}) }}
-                onClick={() => setFamiliaFilter('technicals')}
+                onClick={() => {
+                  setFamiliaFilter('technicals')
+                  setFilterSegment([])
+                  setFilterTipus([])
+                }}
               >Tècnics</button>
             </div>
           </div>
@@ -185,6 +196,9 @@ export default function App() {
             )}
             {activeTab === 'fugats' && (
               <FugatsTab alerts={fugats} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} />
+            )}
+            {activeTab === 'mapa' && (
+              <MapView familiaFilter={familiaFilter} />
             )}
           </>
         )}

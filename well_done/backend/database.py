@@ -169,6 +169,7 @@ def _run_engine(run_fn, today_str, label):
 def ensure_cache(today_str: str, family: str | None = None, force: bool = False):
     from backend.engine.commodities_engine import run as run_commodities
     from backend.engine.technicals_engine import run as run_technicals
+    from backend.engine.geographical_engine import run as run_geographical
 
     engine = get_engine()
     with engine.connect() as conn:
@@ -199,8 +200,33 @@ def ensure_cache(today_str: str, family: str | None = None, force: bool = False)
     parts = []
     parts.append(_run_engine(run_commodities, today_str, "commodities"))
     parts.append(_run_engine(run_technicals, today_str, "technicals"))
-
-    alerts_df = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
+    
+    # Executar engine geogràfic usant la cache generada prèviament per obtenir el share
+    alerts_temp = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
+    if not alerts_temp.empty:
+        # Guardem temporalment per a que el motor geogràfic pugui llegir
+        alerts_temp = alerts_temp.replace({np.nan: None})
+        for c in COLS_CACHE:
+            if c not in alerts_temp.columns:
+                alerts_temp[c] = None
+        alerts_temp["data_alerta"] = today_str
+        alerts_temp[COLS_CACHE + ["data_alerta"]].to_sql(
+            "alertes_cache", engine, if_exists="append", index=False, method="multi"
+        )
+        
+        geo_alerts = _run_engine(run_geographical, today_str, "geographical")
+        if geo_alerts is not None and not geo_alerts.empty:
+            geo_alerts = geo_alerts.replace({np.nan: None})
+            for c in COLS_CACHE:
+                if c not in geo_alerts.columns:
+                    geo_alerts[c] = None
+            geo_alerts["data_alerta"] = today_str
+            geo_alerts[COLS_CACHE + ["data_alerta"]].to_sql(
+                "alertes_cache", engine, if_exists="append", index=False, method="multi"
+            )
+            alerts_temp = pd.concat([alerts_temp, geo_alerts], ignore_index=True)
+            
+    alerts_df = alerts_temp
     if alerts_df.empty:
         return
 
@@ -212,16 +238,15 @@ def ensure_cache(today_str: str, family: str | None = None, force: bool = False)
             if old is not None and old != row.get("segment"):
                 return old
             return None
-        alerts_df["segment_anterior"] = alerts_df.apply(_lookup_anterior, axis=1)
-
-    alerts_df = alerts_df.replace({np.nan: None})
-    for c in COLS_CACHE:
-        if c not in alerts_df.columns:
-            alerts_df[c] = None
-    alerts_df["data_alerta"] = today_str
-    alerts_df[COLS_CACHE + ["data_alerta"]].to_sql(
-        "alertes_cache", engine, if_exists="append", index=False, method="multi"
-    )
+        
+        with engine.begin() as conn:
+            for _, row in alerts_df.iterrows():
+                ant = _lookup_anterior(row)
+                if ant is not None:
+                    conn.execute(
+                        text("UPDATE alertes_cache SET segment_anterior = :ant WHERE id_cliente = :idc AND familia_potencial = :fam AND data_alerta = :today"),
+                        {"ant": ant, "idc": int(row["id_cliente"]), "fam": str(row["familia_potencial"]), "today": today_str}
+                    )
 
     # Netejar treated_alerts obsoletes
     active_keys = set(

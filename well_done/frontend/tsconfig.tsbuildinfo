@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/api/client.ts","./src/components/alertcard.tsx","./src/components/alertdetail.tsx","./src/components/alertlist.tsx","./src/components/filters.tsx","./src/components/fugatstab.tsx","./src/components/header.tsx","./src/components/mapview.tsx","./src/types/index.ts"],"version":"5.7.3"}

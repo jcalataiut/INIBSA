@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { Alerta, ClientDetail } from '../types'
-import { getClient, updateFeedback } from '../api/client'
+import { getClient, updateFeedback, getMapData } from '../api/client'
+import { MapContainer, TileLayer, CircleMarker, Tooltip } from 'react-leaflet'
+import 'leaflet/dist/leaflet.css'
+import type { MapPoint } from '../types'
 
 interface Props {
   alert: Alerta
@@ -18,11 +21,16 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
   const [data, setData] = useState<ClientDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [simDay, setSimDay] = useState<number | null>(null)
+  const [mapPoints, setMapPoints] = useState<MapPoint[]>([])
 
   useEffect(() => {
     setLoading(true)
     getClient(alert.id_cliente).then(d => { setData(d); setLoading(false) }).catch(() => setLoading(false))
-  }, [alert.id_cliente])
+    
+    if (alert.tipus_alerta === 'geographical_alert') {
+      getMapData().then(setMapPoints).catch(console.error)
+    }
+  }, [alert.id_cliente, alert.tipus_alerta])
 
   const borderColor = alert.tipus_alerta === 'anticipacio' ? '#00B8A9'
     : alert.tipus_alerta === 'reactiva' ? '#E74C3C'
@@ -149,121 +157,169 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
           </button>
         </div>
 
-        {/* ── Chart ──────────────────────────────────── */}
-        {loading ? (
-          <p style={{ color: '#9CA3AF', fontSize: 13, padding: '40px 0', textAlign: 'center' }}>Carregant historial...</p>
-        ) : purchases.length === 0 ? (
-          <p style={{ color: '#9CA3AF', fontSize: 13, padding: '40px 0', textAlign: 'center' }}>Sense historial de compres</p>
-        ) : (
-          <svg width="100%" viewBox={`0 0 ${W} ${H + 50}`} style={styles.chartSvg}>
-            {/* Prediction zones */}
-            <rect x={xScale(low)} y={PAD.top} width={xScale(high) - xScale(low)} height={chartH}
-              fill="rgba(0,184,169,0.10)" rx={0} />
-            <rect x={xScale(high)} y={PAD.top} width={xScale(riskHigh) - xScale(high)} height={chartH}
-              fill="rgba(231,76,60,0.08)" rx={0} />
-            <line x1={xScale(properDay)} y1={PAD.top} x2={xScale(properDay)} y2={PAD.top + chartH}
-              stroke="#00B8A9" strokeWidth={1} strokeDasharray="4,3" opacity={0.5} />
-
-            {/* Purchase bars */}
-            {(() => {
-              // Donem prioritat a mostrar els imports de les compres més recents
-              const visibility = new Array(purchases.length).fill(false);
-              let lastLabelX = Infinity;
-              for (let i = purchases.length - 1; i >= 0; i--) {
-                const p = purchases[i];
-                if (p.day > hojeDay) continue;
-                
-                const currentX = xScale(p.day);
-                if (lastLabelX - currentX > 26) {
-                  visibility[i] = true;
-                  lastLabelX = currentX;
-                }
-              }
-
-              return purchases.map((p, i) => {
-                const currentX = xScale(p.day);
-                const isFuture = p.day > hojeDay;
-                const barW = Math.max(3, (chartW / xMax) * 4);
-                const barH = chartH - yScale(p.valor) + PAD.top;
-                const showLabel = visibility[i];
-
-                // Si és una compra futura (en mode simulació), marcar si encerta la predicció
-                let barColor: string, barOpacity: number;
-                if (isFuture) {
-                  const dinsFinestra = p.day >= low && p.day <= high;
-                  barColor = dinsFinestra ? '#059669' : '#DC2626';
-                  barOpacity = dinsFinestra ? 0.7 : 0.5;
-                } else {
-                  barColor = '#1565C0';
-                  barOpacity = 0.8;
-                }
-
+        {/* ── Chart OR Map ──────────────────────────────────── */}
+        {alert.tipus_alerta === 'geographical_alert' ? (
+          <div style={{ height: 300, borderRadius: 8, overflow: 'hidden', marginBottom: 16 }}>
+            {mapPoints.length > 0 ? (
+              (() => {
+                const centerPoint = mapPoints.find(p => p.id_cliente === alert.id_cliente)
+                const centerLat = centerPoint ? centerPoint.lat : 28.29
+                const centerLon = centerPoint ? centerPoint.lon : -16.62
                 return (
-                  <g key={i}>
-                    <title>{p.valor.toFixed(0)}€ - dia {p.day}</title>
-                    <rect x={currentX - barW / 2} y={yScale(p.valor)} width={barW} height={barH}
-                      fill={barColor} rx={0} opacity={barOpacity} />
-                    {showLabel && (
-                      <text x={currentX} y={yScale(p.valor) - 6} textAnchor="middle"
-                        fontSize={9} fill="#4B5563" fontWeight={600}>
-                        {p.valor.toFixed(0)}€
-                      </text>
-                    )}
-                  </g>
+                  <MapContainer center={[centerLat, centerLon]} zoom={11} style={{ height: '100%', width: '100%' }}>
+                    <TileLayer
+                      attribution='&copy; OpenStreetMap'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    {mapPoints.filter(p => p.familia === alert.familia_potencial).map((p, idx) => {
+                      const isCenter = p.id_cliente === alert.id_cliente
+                      return (
+                        <CircleMarker
+                          key={`${p.id_cliente}-${idx}`}
+                          center={[p.lat, p.lon]}
+                          radius={isCenter ? 12 : 8}
+                          pathOptions={{
+                            fillColor: isCenter ? '#111827' : (p.share_12m >= 0.7 ? '#00B8A9' : p.share_12m >= 0.4 ? '#F4A261' : '#E74C3C'),
+                            fillOpacity: 0.8,
+                            color: isCenter ? '#fff' : '#fff',
+                            weight: isCenter ? 3 : 1,
+                          }}
+                        >
+                          <Tooltip>
+                            <div>
+                              <strong>Client #{p.id_cliente}</strong>
+                              <br />
+                              Share of Wallet: {(p.share_12m * 100).toFixed(1)}%
+                            </div>
+                          </Tooltip>
+                        </CircleMarker>
+                      )
+                    })}
+                  </MapContainer>
                 )
-              });
-            })()}
+              })()
+            ) : (
+              <p style={{ color: '#9CA3AF', fontSize: 13, padding: '40px 0', textAlign: 'center' }}>Carregant mapa...</p>
+            )}
+          </div>
+        ) : (
+          <>
+            {loading ? (
+              <p style={{ color: '#9CA3AF', fontSize: 13, padding: '40px 0', textAlign: 'center' }}>Carregant historial...</p>
+            ) : purchases.length === 0 ? (
+              <p style={{ color: '#9CA3AF', fontSize: 13, padding: '40px 0', textAlign: 'center' }}>Sense historial de compres</p>
+            ) : (
+              <svg width="100%" viewBox={`0 0 ${W} ${H + 50}`} style={styles.chartSvg}>
+                {/* Prediction zones */}
+                <rect x={xScale(low)} y={PAD.top} width={xScale(high) - xScale(low)} height={chartH}
+                  fill="rgba(0,184,169,0.10)" rx={0} />
+                <rect x={xScale(high)} y={PAD.top} width={xScale(riskHigh) - xScale(high)} height={chartH}
+                  fill="rgba(231,76,60,0.08)" rx={0} />
+                <line x1={xScale(properDay)} y1={PAD.top} x2={xScale(properDay)} y2={PAD.top + chartH}
+                  stroke="#00B8A9" strokeWidth={1} strokeDasharray="4,3" opacity={0.5} />
 
-            {/* Today line — color segons on cau respecte a la predicció */}
-            {(() => {
-              const hojeDinsVerd = hojeDay >= low && hojeDay <= high
-              const hojeDinsVermell = hojeDay > high && hojeDay <= riskHigh
-              const hojePassat = hojeDay > riskHigh
-              const hojeColor = hojePassat ? '#DC2626' : hojeDinsVermell ? '#F59E0B' : hojeDinsVerd ? '#059669' : '#111827'
-              const hojeLabel = hojePassat ? 'RETARD' : hojeDinsVermell ? 'ALERTA' : hojeDinsVerd ? 'FINESTRA' : 'AVUI'
-              return <>
-                <line x1={xScale(hojeDay)} y1={PAD.top} x2={xScale(hojeDay)} y2={PAD.top + chartH}
-                  stroke={hojeColor} strokeWidth={2.5} />
-                <text x={xScale(hojeDay)} y={PAD.top - 10} textAnchor="middle"
-                  fontSize={10} fontWeight={700} fill={hojeColor}>
-                  {simDay !== null ? hojeLabel.replace('AVUI', 'SIM') : hojeLabel}
-                </text>
-              </>
-            })()}
+                {/* Purchase bars */}
+                {(() => {
+                  const visibility = new Array(purchases.length).fill(false);
+                  let lastLabelX = Infinity;
+                  for (let i = purchases.length - 1; i >= 0; i--) {
+                    const p = purchases[i];
+                    if (p.day > hojeDay) continue;
+                    
+                    const currentX = xScale(p.day);
+                    if (lastLabelX - currentX > 26) {
+                      visibility[i] = true;
+                      lastLabelX = currentX;
+                    }
+                  }
 
-            {/* Baseline */}
-            <line x1={PAD.left} y1={PAD.top + chartH} x2={PAD.left + chartW} y2={PAD.top + chartH}
-              stroke="#E5E7EB" strokeWidth={1} />
+                  return purchases.map((p, i) => {
+                    const currentX = xScale(p.day);
+                    const isFuture = p.day > hojeDay;
+                    const barW = Math.max(3, (chartW / xMax) * 4);
+                    const barH = chartH - yScale(p.valor) + PAD.top;
+                    const showLabel = visibility[i];
 
-            {/* X-axis labels */}
-            {[0, Math.round(xMax * 0.25), Math.round(xMax * 0.5), Math.round(xMax * 0.75), Math.round(xMax)].map(d => (
-              <text key={d} x={xScale(d)} y={PAD.top + chartH + 30} textAnchor="middle"
-                fontSize={9} fill="#9CA3AF">dia {d}</text>
-            ))}
-          </svg>
+                    let barColor: string, barOpacity: number;
+                    if (isFuture) {
+                      const dinsFinestra = p.day >= low && p.day <= high;
+                      barColor = dinsFinestra ? '#059669' : '#DC2626';
+                      barOpacity = dinsFinestra ? 0.7 : 0.5;
+                    } else {
+                      barColor = '#1565C0';
+                      barOpacity = 0.8;
+                    }
+
+                    return (
+                      <g key={i}>
+                        <title>{p.valor.toFixed(0)}€ - dia {p.day}</title>
+                        <rect x={currentX - barW / 2} y={yScale(p.valor)} width={barW} height={barH}
+                          fill={barColor} rx={0} opacity={barOpacity} />
+                        {showLabel && (
+                          <text x={currentX} y={yScale(p.valor) - 6} textAnchor="middle"
+                            fontSize={9} fill="#4B5563" fontWeight={600}>
+                            {p.valor.toFixed(0)}€
+                          </text>
+                        )}
+                      </g>
+                    )
+                  });
+                })()}
+
+                {/* Today line */}
+                {(() => {
+                  const hojeDinsVerd = hojeDay >= low && hojeDay <= high
+                  const hojeDinsVermell = hojeDay > high && hojeDay <= riskHigh
+                  const hojePassat = hojeDay > riskHigh
+                  const hojeColor = hojePassat ? '#DC2626' : hojeDinsVermell ? '#F59E0B' : hojeDinsVerd ? '#059669' : '#111827'
+                  const hojeLabel = hojePassat ? 'RETARD' : hojeDinsVermell ? 'ALERTA' : hojeDinsVerd ? 'FINESTRA' : 'AVUI'
+                  return <>
+                    <line x1={xScale(hojeDay)} y1={PAD.top} x2={xScale(hojeDay)} y2={PAD.top + chartH}
+                      stroke={hojeColor} strokeWidth={2.5} />
+                    <text x={xScale(hojeDay)} y={PAD.top - 10} textAnchor="middle"
+                      fontSize={10} fontWeight={700} fill={hojeColor}>
+                      {simDay !== null ? hojeLabel.replace('AVUI', 'SIM') : hojeLabel}
+                    </text>
+                  </>
+                })()}
+
+                {/* Baseline */}
+                <line x1={PAD.left} y1={PAD.top + chartH} x2={PAD.left + chartW} y2={PAD.top + chartH}
+                  stroke="#E5E7EB" strokeWidth={1} />
+
+                {/* X-axis labels */}
+                {[0, Math.round(xMax * 0.25), Math.round(xMax * 0.5), Math.round(xMax * 0.75), Math.round(xMax)].map(d => (
+                  <text key={d} x={xScale(d)} y={PAD.top + chartH + 30} textAnchor="middle"
+                    fontSize={9} fill="#9CA3AF">dia {d}</text>
+                ))}
+              </svg>
+            )}
+          </>
         )}
 
         {/* ── Motiu i Slider ──────────────────────────────── */}
         <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <p style={styles.motiu}>{alert.motiu}</p>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#F9FAFB', padding: '12px 16px', borderRadius: 0, border: '1px solid #E5E7EB' }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Simular Dia Avui:</label>
-            <input 
-              type="range" 
-              min={0} 
-              max={actualHojeDay} 
-              value={hojeDay} 
-              onChange={(e) => {
-                const v = Number(e.target.value)
-                setSimDay(v >= actualHojeDay ? null : v)
-              }} 
-              style={{ flex: 1 }}
-            />
-            <span style={{ fontSize: 13, color: '#6B7280', minWidth: 50, textAlign: 'right' }}>
-              Dia {hojeDay}
-            </span>
-          </div>
+          {alert.tipus_alerta !== 'geographical_alert' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#F9FAFB', padding: '12px 16px', borderRadius: 0, border: '1px solid #E5E7EB' }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Simular Dia Avui:</label>
+              <input 
+                type="range" 
+                min={0} 
+                max={actualHojeDay} 
+                value={hojeDay} 
+                onChange={(e) => {
+                  const v = Number(e.target.value)
+                  setSimDay(v >= actualHojeDay ? null : v)
+                }} 
+                style={{ flex: 1 }}
+              />
+              <span style={{ fontSize: 13, color: '#6B7280', minWidth: 50, textAlign: 'right' }}>
+                Dia {hojeDay}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

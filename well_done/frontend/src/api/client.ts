@@ -1,4 +1,4 @@
-import type { Alerta, Stats, TreatedAlert, ClientDetail, FeedbackStats } from '../types'
+import type { Alerta, Stats, TreatedAlert, ClientDetail, FeedbackStats, MapPoint } from '../types'
 
 const BASE = '/api'
 
@@ -67,4 +67,9 @@ export function getClient(id: number): Promise<ClientDetail> {
 
 export function refreshCache(): Promise<{ status: string; today: string }> {
   return fetchJSON('/refresh', { method: 'POST' })
+}
+
+export function getMapData(today?: string): Promise<MapPoint[]> {
+  const qs = today ? `?today=${today}` : ''
+  return fetchJSON<MapPoint[]>(`/alerts/map${qs}`)
 }

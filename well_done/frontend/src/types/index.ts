@@ -80,4 +80,14 @@ export const ALERTA_LABELS: Record<string, string> = {
   anomalia_vermella: 'Anomalia Vermella',
   caiguda_volum: 'Caiguda de Volum',
   monitoritzar: 'Monitoritzar',
+  geographical_alert: 'Alerta Geogràfica',
+}
+
+export interface MapPoint {
+  id_cliente: number
+  familia: string
+  share_12m: number
+  cod_postal: string
+  lat: number
+  lon: number
 }

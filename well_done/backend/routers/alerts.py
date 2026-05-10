@@ -105,3 +105,60 @@ def get_alerts(
         alerts = [a for a in alerts if not a.tractada]
 
     return alerts
+
+import pgeocode
+nomi = pgeocode.Nominatim('es')
+
+@router.get("/map")
+def get_map_data(today: str = Query(default_factory=today_str)):
+    engine = get_engine()
+    today_str = today if isinstance(today, str) else today.strftime("%Y-%m-%d")
+    ensure_cache(today_str)
+    
+    # Obtenir els clients actius amb el seu share de wallet i codi postal
+    query = """
+        SELECT a.id_cliente, a.familia_potencial, a.share_12m, v.cod_postal
+        FROM alertes_cache a
+        LEFT JOIN (
+            SELECT id_cliente, MAX(cod_postal) as cod_postal
+            FROM ventas
+            GROUP BY id_cliente
+        ) v ON a.id_cliente = v.id_cliente
+        WHERE a.data_alerta = :today AND a.tipus_alerta != 'fugat'
+    """
+    df = pd.read_sql(text(query), engine, params={"today": today_str})
+    
+    if df.empty:
+        return []
+        
+    def clean_cp(x):
+        try:
+            return str(x).replace('.0', '').zfill(5)
+        except:
+            return None
+            
+    df['cod_postal_clean'] = df['cod_postal'].apply(clean_cp)
+    
+    # Obtenir lats i lons ràpid
+    unique_cps = df['cod_postal_clean'].dropna().unique()
+    geo_data = {}
+    for cp in unique_cps:
+        res = nomi.query_postal_code(cp)
+        if not pd.isna(res.latitude):
+            geo_data[cp] = {"lat": float(res.latitude), "lon": float(res.longitude)}
+            
+    points = []
+    for _, row in df.iterrows():
+        cp = row['cod_postal_clean']
+        if cp in geo_data and row['share_12m'] is not None:
+            points.append({
+                "id_cliente": int(row["id_cliente"]),
+                "familia": row["familia_potencial"],
+                "share_12m": float(row["share_12m"]),
+                "cod_postal": cp,
+                "lat": geo_data[cp]["lat"],
+                "lon": geo_data[cp]["lon"]
+            })
+            
+    return points
+
