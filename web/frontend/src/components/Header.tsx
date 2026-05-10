@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 interface HeaderProps {
   activeTab: 'briefing' | 'fugats' | 'tractades' | 'mapa'
   onTabChange: (t: 'briefing' | 'fugats' | 'tractades' | 'mapa') => void
@@ -5,94 +7,100 @@ interface HeaderProps {
 
 export default function Header({ activeTab, onTabChange }: HeaderProps) {
   return (
-    <div style={styles.wrapper}>
-      <div style={styles.inner}>
-        <div style={styles.left}>
-          <div style={styles.logo}>
-            <img src="/logo.jpg" alt="Inibsa" style={styles.logoImg} />
-          </div>
-        </div>
-        <div style={styles.center}>
-          <div style={styles.tabs}>
-            <button
-              style={{ ...styles.tab, ...(activeTab === 'briefing' ? styles.tabActive : {}) }}
-              onClick={() => onTabChange('briefing')}
-            >
-              Alertes del Dia
-            </button>
-            <button
-              style={{ ...styles.tab, ...(activeTab === 'tractades' ? styles.tabActive : {}) }}
-              onClick={() => onTabChange('tractades')}
-            >
-              Tractades
-            </button>
-            <button
-              style={{ ...styles.tab, ...(activeTab === 'fugats' ? styles.tabActive : {}) }}
-              onClick={() => onTabChange('fugats')}
-            >
-              Fugats
-            </button>
-            <button
-              style={{ ...styles.tab, ...(activeTab === 'mapa' ? styles.tabActive : {}) }}
-              onClick={() => onTabChange('mapa')}
-            >
-              Mapa
-            </button>
-          </div>
-        </div>
-        <div style={styles.right} />
+    <div style={styles.sidebar}>
+      <div style={styles.logoSection} onClick={() => onTabChange('briefing')}>
+        <img src="/logo.jpg" alt="Inibsa" style={styles.logoImg} />
       </div>
+
+      <nav style={styles.nav}>
+        <button
+          style={{ ...styles.navItem, ...(activeTab === 'briefing' ? styles.navItemActive : {}) }}
+          onClick={() => onTabChange('briefing')}
+        >
+          {activeTab === 'briefing' && <div style={styles.activeLine} />}
+          Alertes del Dia
+        </button>
+        <button
+          style={{ ...styles.navItem, ...(activeTab === 'tractades' ? styles.navItemActive : {}) }}
+          onClick={() => onTabChange('tractades')}
+        >
+          {activeTab === 'tractades' && <div style={styles.activeLine} />}
+          Tractades
+        </button>
+        <button
+          style={{ ...styles.navItem, ...(activeTab === 'fugats' ? styles.navItemActive : {}) }}
+          onClick={() => onTabChange('fugats')}
+        >
+          {activeTab === 'fugats' && <div style={styles.activeLine} />}
+          Fugats
+        </button>
+        <button
+          style={{ ...styles.navItem, ...(activeTab === 'mapa' ? styles.navItemActive : {}) }}
+          onClick={() => onTabChange('mapa')}
+        >
+          {activeTab === 'mapa' && <div style={styles.activeLine} />}
+          Mapa
+        </button>
+      </nav>
     </div>
   )
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  wrapper: {
-    borderBottom: '1px solid #E5E7EB',
+const styles: Record<string, CSSProperties> = {
+  sidebar: {
+    width: 210,
     background: '#FFFFFF',
-    position: 'sticky',
-    top: 0,
+    height: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    borderRight: '1px solid #E2E8F0',
     zIndex: 100,
+    flexShrink: 0,
   },
-  inner: {
-    maxWidth: 1200,
-    margin: '0 auto',
-    padding: '0 48px',
-    height: 64,
+  logoSection: {
+    padding: '40px 20px',
+    cursor: 'pointer',
     display: 'flex',
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  left: {},
-  logo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
   },
   logoImg: {
-    height: 32,
-    width: 'auto',
+    width: '100%',
+    maxWidth: 160,
+    height: 'auto',
   },
-  center: {},
-  tabs: {
+  nav: {
     display: 'flex',
-    gap: 0,
+    flexDirection: 'column',
+    gap: 4,
+    padding: '0 10px',
   },
-  tab: {
+  navItem: {
     background: 'none',
     border: 'none',
-    borderBottom: '2px solid transparent',
-    color: '#6B7280',
-    fontSize: 13,
-    fontWeight: 500,
-    padding: '0 20px',
-    height: 64,
+    color: '#718096',
+    fontSize: 14,
+    fontWeight: 600,
+    padding: '12px 16px',
+    textAlign: 'left',
     cursor: 'pointer',
-    letterSpacing: 0.3,
+    borderRadius: 8,
+    position: 'relative',
+    transition: 'all 0.2s ease',
+    display: 'flex',
+    alignItems: 'center',
   },
-  tabActive: {
+  navItemActive: {
     color: '#00B8A9',
-    borderBottom: '2px solid #00B8A9',
+    background: '#F0FFF4',
   },
-  right: {},
+  activeLine: {
+    position: 'absolute',
+    left: 0,
+    top: '15%',
+    bottom: '15%',
+    width: 4,
+    background: '#00B8A9',
+    borderRadius: '0 4px 4px 0',
+  },
 }

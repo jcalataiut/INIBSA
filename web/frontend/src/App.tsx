@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, type CSSProperties } from 'react'
 import type { Alerta } from './types'
 import { getAlerts, markTreated, unmarkTreated, getTreated, refreshCache } from './api/client'
 import Header from './components/Header'
@@ -17,11 +17,13 @@ function formatDate(d: Date): string {
 
 const globalStyles = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #F3F4F6; color: #111827; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: #F3F4F6; }
-  ::-webkit-scrollbar-thumb { background: #D1D5DB; }
-  ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+  body { 
+    background: #FFFFFF; 
+    color: #1C1C1E; 
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; 
+    -webkit-font-smoothing: antialiased;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes spin { to { transform: rotate(360deg); } }
 `
 
@@ -133,22 +135,36 @@ export default function App() {
   return (
     <div style={styles.container}>
       <Header activeTab={activeTab} onTabChange={setActiveTab} />
-      <div style={styles.content}>
-        <div style={styles.headerSection}>
-          <h1 style={styles.title}>{TITLE[activeTab]}</h1>
-          {activeTab === 'briefing' && (
+      <main style={styles.main}>
+        <div style={styles.content}>
+          <div style={styles.topHeader}>
+            <div>
+              <h1 style={styles.title}>{TITLE[activeTab]}</h1>
+              <p style={styles.dateSub}>{formatDate(today)}</p>
+            </div>
+            
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <Filters
-                activeFamilia={familiaFilter}
-                filterSegment={filterSegment}
-                filterTipus={filterTipus}
-                filterUrgencia={filterUrgencia}
-                showTreated={showTreated}
-                onSegmentChange={setFilterSegment}
-                onTipusChange={setFilterTipus}
-                onUrgenciaChange={setFilterUrgencia}
-                onShowTreatedChange={setShowTreated}
-              />
+              {activeTab === 'briefing' && (
+                <Filters
+                  activeFamilia={familiaFilter}
+                  filterSegment={filterSegment}
+                  filterTipus={filterTipus}
+                  filterUrgencia={filterUrgencia}
+                  showTreated={showTreated}
+                  onSegmentChange={setFilterSegment}
+                  onTipusChange={setFilterTipus}
+                  onUrgenciaChange={setFilterUrgencia}
+                  onShowTreatedChange={setShowTreated}
+                />
+              )}
+              <button style={styles.refreshBtn} onClick={handleRefresh}>
+                Recalcular dades
+              </button>
+            </div>
+          </div>
+
+          {activeTab === 'briefing' && (
+            <div style={styles.controlsRow}>
               <div style={styles.toggle}>
                 <button
                   style={{ ...styles.toggleBtn, ...(familiaFilter === 'commodities' ? styles.toggleActive : {}) }}
@@ -169,80 +185,89 @@ export default function App() {
               </div>
             </div>
           )}
-        </div>
-        <p style={styles.dateSub}>{formatDate(today)}</p>
 
-        {/* ── Refresh button ────────────────────────────── */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-          <button onClick={handleRefresh} style={styles.refreshBtn} title="Recalcular alertes">
-            ⟳ Recalcular
-          </button>
+          <div style={styles.listContainer}>
+            {error ? (
+              <div style={styles.loading}>
+                <span style={{ ...styles.loadingText, color: '#E74C3C' }}>{error}</span>
+              </div>
+            ) : loading ? (
+              <div style={styles.loading}>
+                <div style={styles.spinner} />
+                <span style={styles.loadingText}>Carregant Dashboard...</span>
+              </div>
+            ) : (
+              <>
+                {activeTab === 'briefing' && (
+                  <AlertList alerts={pendents} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} />
+                )}
+                {activeTab === 'tractades' && (
+                  <AlertList alerts={tractades} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} listLabel="tractades" />
+                )}
+                {activeTab === 'fugats' && (
+                  <FugatsTab alerts={fugats} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} />
+                )}
+                {activeTab === 'mapa' && (
+                  <MapView familiaFilter={familiaFilter} />
+                )}
+              </>
+            )}
+          </div>
         </div>
-
-        {error ? (
-          <div style={styles.loading}>
-            <span style={{ ...styles.loadingText, color: '#E74C3C' }}>{error}</span>
-          </div>
-        ) : loading ? (
-          <div style={styles.loading}>
-            <div style={styles.spinner} />
-            <span style={styles.loadingText}>Calculant alertes...</span>
-          </div>
-        ) : (
-          <>
-            {activeTab === 'briefing' && (
-              <AlertList alerts={pendents} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} />
-            )}
-            {activeTab === 'tractades' && (
-              <AlertList alerts={tractades} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} listLabel="tractades" />
-            )}
-            {activeTab === 'fugats' && (
-              <FugatsTab alerts={fugats} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} />
-            )}
-            {activeTab === 'mapa' && (
-              <MapView familiaFilter={familiaFilter} />
-            )}
-          </>
-        )}
-      </div>
+      </main>
     </div>
   )
 }
 
-const styles: Record<string, React.CSSProperties> = {
+const styles: Record<string, CSSProperties> = {
   container: {
-    minHeight: '100vh',
-    background: '#F3F4F6',
-    color: '#111827',
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+    height: '100vh',
+    background: '#F4F7F9',
+    display: 'flex',
+    overflow: 'hidden',
+  },
+  main: {
+    flex: 1,
+    overflowY: 'auto',
+    padding: '0',
     display: 'flex',
     flexDirection: 'column',
   },
   content: {
+    padding: '40px 48px',
     maxWidth: 1200,
-    width: '100%',
     margin: '0 auto',
-    padding: '0 48px 64px',
-    flex: 1,
+    width: '100%',
   },
-  headerSection: {
+  topHeader: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    paddingTop: 32,
+    alignItems: 'flex-start',
+    marginBottom: 40,
   },
   title: {
-    fontSize: 26,
-    fontWeight: 700,
-    color: '#111827',
+    fontSize: 28,
+    fontWeight: 800,
+    color: '#1A202C',
     margin: 0,
-    letterSpacing: -0.5,
+    letterSpacing: '-0.02em',
   },
   dateSub: {
-    fontSize: 13,
-    color: '#6B7280',
+    fontSize: 14,
+    fontWeight: 500,
+    color: '#718096',
     marginTop: 4,
+  },
+  controlsRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 16,
     marginBottom: 24,
+  },
+  listContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
   },
   loading: {
     display: 'flex',
@@ -255,44 +280,48 @@ const styles: Record<string, React.CSSProperties> = {
   spinner: {
     width: 32,
     height: 32,
-    border: '3px solid #E5E7EB',
+    border: '3px solid #E2E8F0',
     borderTop: '3px solid #00B8A9',
+    borderRadius: '50%',
     animation: 'spin 0.8s linear infinite',
   },
   loadingText: {
     fontSize: 15,
-    color: '#6B7280',
+    color: '#718096',
     fontWeight: 500,
   },
   toggle: {
     display: 'flex',
-    gap: 0,
+    background: '#E2E8F0',
+    padding: 3,
+    borderRadius: 8,
+    gap: 2,
   },
   toggleBtn: {
-    background: '#FFFFFF',
-    border: '1px solid #D1D5DB',
-    color: '#6B7280',
-    fontSize: 12,
-    fontWeight: 600,
-    padding: '6px 14px',
+    background: 'transparent',
+    border: 'none',
+    color: '#4A5568',
+    fontSize: 13,
+    fontWeight: 700,
+    padding: '6px 16px',
     cursor: 'pointer',
-    fontFamily: "'Inter', sans-serif",
+    borderRadius: 6,
+    transition: 'all 0.2s ease',
   },
   toggleActive: {
-    background: '#111827',
-    border: '1px solid #111827',
-    color: '#FFFFFF',
+    background: '#FFFFFF',
+    color: '#1A202C',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
   },
-
   refreshBtn: {
     background: '#FFFFFF',
-    border: '1px solid #D1D5DB',
-    color: '#6B7280',
-    fontSize: 16,
-    fontWeight: 600,
-    padding: '4px 10px',
+    border: '1px solid #E2E8F0',
+    color: '#4A5568',
+    fontSize: 13,
+    fontWeight: 700,
+    padding: '10px 20px',
+    borderRadius: 8,
     cursor: 'pointer',
-    fontFamily: "'Inter', sans-serif",
-    lineHeight: 1,
+    transition: 'all 0.2s ease',
   },
 }

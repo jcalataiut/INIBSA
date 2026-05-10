@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import type { Alerta } from '../types'
 import ContactActions from './ContactActions'
 
@@ -5,13 +6,6 @@ interface Props {
   alert: Alerta
   onToggleTreated: (a: Alerta) => void
   onClick?: (a: Alerta) => void
-}
-
-const URG: Record<string, { bg: string; txt: string }> = {
-  critica: { bg: '#FEE2E2', txt: '#991B1B' },
-  alta:    { bg: '#FEF3C7', txt: '#92400E' },
-  mitjana: { bg: '#DBEAFE', txt: '#1E40AF' },
-  baixa:   { bg: '#F3F4F6', txt: '#4B5563' },
 }
 
 const TIPUS_STYLE: Record<string, { label: string; color: string }> = {
@@ -24,176 +18,150 @@ const TIPUS_STYLE: Record<string, { label: string; color: string }> = {
   monitoritzar:       { label: 'MONITOR',   color: '#3B82F6' },
 }
 
-const TECH_COLORS: Record<string, string> = {
-  actiu_regular: '#059669',
-  actiu_esporadic: '#D97706',
-  inactiu_recent: '#E74C3C',
-  inactiu_total: '#6B7280',
-  fugat: '#6B7280',
-}
-
-function badgeInfo(alert: Alerta): { label: string; color: string } {
-  if (alert.familia_potencial === 'Biomateriales') {
-    const color = TECH_COLORS[alert.segment] || '#6B7280'
-    const label = alert.segment === 'actiu_regular' ? 'actiu'
-      : alert.segment === 'actiu_esporadic' ? 'esporàdic'
-      : alert.segment === 'inactiu_recent' ? 'inactiu'
-      : alert.segment === 'inactiu_total' ? 'inactiu'
-      : alert.segment
-    return { label, color }
-  }
-  if (alert.segment === 'fugat') return { label: 'fugat', color: '#6B7280' }
-  const isLeal = alert.segment === 'leal' || alert.segment === 'actiu_regular' || alert.share_12m >= 0.70
-  return { label: isLeal ? 'leal' : 'promiscuo', color: isLeal ? '#059669' : '#D97706' }
+const URGENCIA_STYLE: Record<string, string> = {
+  critica: '#DC2626',
+  alta:    '#D97706',
+  mitjana: '#3B82F6',
+  baixa:   '#718096',
 }
 
 export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
-  const isFugat = alert.segment === 'fugat'
-  const isTechnical = alert.familia_potencial === 'Biomateriales'
-  const badge = badgeInfo(alert)
+  const isLeal = alert.segment === 'leal' || alert.segment === 'actiu_regular' || alert.share_12m >= 0.70
+  const shareLabel = isLeal ? 'leal' : 'promiscuo'
+  const shareColor = isLeal ? '#00B8A9' : '#F4A261'
 
-  const ts = TIPUS_STYLE[alert.tipus_alerta] || { label: alert.tipus_alerta.replace(/_/g, ' ').toUpperCase(), color: '#6B7280' }
-  const urg = URG[alert.urgencia] || URG.baixa
+  const typeStyle = TIPUS_STYLE[alert.tipus_alerta] || { label: alert.tipus_alerta, color: '#718096' }
+  const urgencyColor = URGENCIA_STYLE[alert.urgencia] || '#718096'
 
   return (
-    <div
-      style={styles.card}
-      onClick={() => onClick?.(alert)}
-    >
+    <div style={styles.card} onClick={() => onClick && onClick(alert)}>
       <div style={styles.top}>
         <div style={styles.left}>
           <span style={styles.id}>#{alert.id_cliente}</span>
           <span style={styles.sep}>·</span>
           <span style={styles.familia}>{alert.familia_potencial}</span>
-          {!isFugat && (
-            <>
-              <span style={styles.sep}>·</span>
-              <span style={{ ...styles.shareBadge, color: badge.color, borderColor: badge.color }}>
-                {isTechnical ? badge.label : `${(alert.share_12m * 100).toFixed(0)}% ${badge.label}`}
-              </span>
-            </>
-          )}
+          <span style={{ ...styles.shareBadge, color: shareColor, borderColor: shareColor }}>
+            {shareLabel}
+          </span>
         </div>
         <div style={styles.right}>
-          <span style={{ ...styles.tag, background: ts.color }}>{ts.label}</span>
-          {!isFugat && (
-            <span style={{ ...styles.tagOutline, background: urg.bg, color: urg.txt }}>
-              {alert.urgencia.toUpperCase()}
-            </span>
-          )}
-          <ContactActions alert={alert} onToggleTreated={onToggleTreated} variant="compact" />
+          <div style={{ ...styles.tag, background: typeStyle.color }}>
+            {typeStyle.label.replace(/_/g, ' ')}
+          </div>
+          <div style={{ ...styles.tagOutline, color: urgencyColor, borderColor: urgencyColor }}>
+            {alert.urgencia}
+          </div>
         </div>
       </div>
 
       <div style={styles.bottom}>
-        <Metric val={`${alert.gap_eur.toLocaleString(undefined, {maximumFractionDigits: 0})}€`} lbl="gap" />
-        <Metric val={`${alert.dies_sense_compra}d`} lbl="sense compra" />
-        <Metric val={alert.cicle_mig_dies ? `${alert.cicle_mig_dies.toFixed(0)}d` : '-'} lbl="cicle" />
+        <div style={styles.metric}>
+          <span style={styles.mVal}>{alert.gap_eur.toLocaleString()}€</span>
+          <span style={styles.mLbl}>gap</span>
+        </div>
+        <div style={styles.metric}>
+          <span style={styles.mVal}>{alert.dies_sense_compra}d</span>
+          <span style={styles.mLbl}>sense compra</span>
+        </div>
+        <div style={styles.metric}>
+          <span style={styles.mVal}>{alert.cicle_mig_dies ? `${alert.cicle_mig_dies.toFixed(0)}d` : '-'}</span>
+          <span style={styles.mLbl}>cicle</span>
+        </div>
+        <div style={{ flex: 1 }} />
+        <ContactActions alert={alert} onToggleTreated={onToggleTreated} variant="compact" />
       </div>
     </div>
   )
 }
 
-function Metric({ val, lbl }: { val: string; lbl: string }) {
-  return (
-    <div style={styles.metric}>
-      <span style={styles.mVal}>{val}</span>
-      <span style={styles.mLbl}>{lbl}</span>
-    </div>
-  )
-}
-
-const styles: Record<string, React.CSSProperties> = {
+const styles: Record<string, CSSProperties> = {
   card: {
     background: '#FFFFFF',
-    border: '1px solid #E5E7EB',
     borderRadius: 8,
-    padding: '16px 20px',
-    marginBottom: 8,
+    padding: '20px',
+    marginBottom: 12,
     cursor: 'pointer',
     transition: 'all 0.2s ease',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+    border: '1px solid #E2E8F0',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 20,
   },
   top: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
   },
   left: {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
-    flexWrap: 'wrap' as const,
   },
   right: {
     display: 'flex',
     alignItems: 'center',
-    gap: 10,
-    flexShrink: 0,
+    gap: 8,
   },
   id: {
-    fontSize: 15,
-    fontWeight: 700,
-    color: '#111827',
-    fontVariantNumeric: 'tabular-nums',
+    fontSize: 18,
+    fontWeight: 800,
+    color: '#1A202C',
   },
   sep: {
-    color: '#D1D5DB',
-    fontSize: 15,
+    color: '#CBD5E0',
+    fontSize: 18,
   },
   familia: {
-    fontSize: 14,
-    fontWeight: 500,
-    color: '#374151',
+    fontSize: 16,
+    fontWeight: 600,
+    color: '#4A5568',
   },
   shareBadge: {
     fontSize: 11,
-    fontWeight: 600,
+    fontWeight: 700,
     padding: '2px 8px',
     borderRadius: 4,
     border: '1px solid',
-    whiteSpace: 'nowrap' as const,
+    textTransform: 'uppercase' as const,
+    marginLeft: 4,
   },
   tag: {
     fontSize: 10,
-    fontWeight: 700,
+    fontWeight: 800,
     color: '#FFFFFF',
-    padding: '3px 10px',
+    padding: '4px 10px',
     borderRadius: 4,
     textTransform: 'uppercase' as const,
-    letterSpacing: 0.5,
-    whiteSpace: 'nowrap' as const,
+    letterSpacing: '0.02em',
   },
   tagOutline: {
     fontSize: 10,
-    fontWeight: 700,
+    fontWeight: 800,
     padding: '3px 10px',
     borderRadius: 4,
     textTransform: 'uppercase' as const,
-    letterSpacing: 0.5,
-    whiteSpace: 'nowrap' as const,
+    border: '1px solid',
+    letterSpacing: '0.02em',
   },
   bottom: {
     display: 'flex',
+    alignItems: 'flex-end',
     gap: 24,
-    paddingTop: 10,
-    borderTop: '1px solid #F3F4F6',
   },
   metric: {
     display: 'flex',
-    alignItems: 'baseline',
-    gap: 5,
+    flexDirection: 'column',
   },
   mVal: {
-    fontSize: 14,
-    fontWeight: 600,
-    color: '#111827',
-    fontVariantNumeric: 'tabular-nums',
+    fontSize: 16,
+    fontWeight: 700,
+    color: '#2D3748',
   },
   mLbl: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    fontWeight: 500,
+    fontSize: 11,
+    color: '#A0AEC0',
+    fontWeight: 600,
+    textTransform: 'uppercase' as const,
   },
 }
+

@@ -57,41 +57,27 @@ export default function ContactActions({ alert, onToggleTreated, variant = 'comp
         onClick={handleTreat}
         className="btn-treat"
       >
-        {alert.tractada ? (
-          <>
-            <UndoIcon size={isCompact ? 16 : 18} />
-            {!isCompact && <span style={styles.label}>Desfer</span>}
-          </>
-        ) : (
-          <>
-            <CheckIcon size={isCompact ? 16 : 18} />
-            {!isCompact && <span style={styles.label}>Tractar</span>}
-          </>
-        )}
+        {alert.tractada ? <UndoIcon size={isCompact ? 16 : 20} /> : <CheckIcon size={isCompact ? 16 : 20} />}
+        <span style={styles.label}>{alert.tractada ? 'Desfer' : 'Tractar'}</span>
       </button>
 
       <style>{`
         .action-btn-mail:hover {
-          background-color: #F0F7FF !important;
-          color: #004F9F !important;
-          border-color: #004F9F !important;
-          transform: translateY(-2px);
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+          background-color: rgba(0, 122, 255, 0.1) !important;
+          color: #007AFF !important;
+          transform: scale(1.05);
         }
         .action-btn-phone:hover {
-          background-color: #F0FDF4 !important;
-          color: #059669 !important;
-          border-color: #059669 !important;
-          transform: translateY(-2px);
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+          background-color: rgba(52, 199, 89, 0.1) !important;
+          color: #34C759 !important;
+          transform: scale(1.05);
         }
         .btn-treat:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1) !important;
-          filter: brightness(1.1);
+          transform: scale(1.02);
+          filter: brightness(1.15);
         }
         button {
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
           outline: none;
         }
         button:hover svg {
@@ -101,7 +87,7 @@ export default function ContactActions({ alert, onToggleTreated, variant = 'comp
           transition: transform 0.2s ease-in-out;
         }
         button:active {
-          transform: scale(0.92) !important;
+          transform: scale(0.94) !important;
         }
       `}</style>
     </div>
@@ -112,20 +98,20 @@ const styles: Record<string, CSSProperties> = {
   group: {
     display: 'flex',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   actionBtn: {
-    background: '#FFFFFF',
-    border: '1px solid #E5E7EB',
-    color: '#4B5563',
+    background: 'rgba(0,0,0,0.03)',
+    border: 'none',
+    color: '#3A3A3C',
     padding: '8px',
-    borderRadius: '8px',
+    borderRadius: 20,
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+    transition: 'all 0.2s ease',
   },
   treatBtn: {
     border: 'none',
@@ -136,23 +122,25 @@ const styles: Record<string, CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    borderRadius: 20,
+    transition: 'all 0.2s ease',
   },
   treatBtnCompact: {
-    padding: '8px',
+    padding: '6px 14px',
+    fontSize: '13px',
   },
   treatBtnLarge: {
-    padding: '8px 20px',
+    padding: '10px 24px',
     fontSize: '14px',
   },
   untreated: {
-    background: '#111827',
+    background: '#000000',
   },
   treated: {
-    background: '#9CA3AF',
+    background: '#AEAEB2',
   },
   label: {
-    fontSize: '13px',
+    fontSize: '14px',
+    fontWeight: 500,
   },
 }

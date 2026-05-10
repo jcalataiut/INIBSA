@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import type { Alerta, ClientDetail } from '../types'
 import { getClient, updateFeedback, getMapData } from '../api/client'
 import { MapContainer, TileLayer, CircleMarker, Tooltip } from 'react-leaflet'
@@ -323,22 +323,24 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
 
       {/* ── Metrics ──────────────────────────────────── */}
       <div style={styles.metrics}>
-        <span style={{ ...styles.metric, color: shareColor }}>
-          {(alert.share_12m * 100).toFixed(0)}% <span style={styles.mLabel}>{shareLabel}</span>
-        </span>
-        <span style={styles.mDiv}>|</span>
-        <span style={styles.metric}>
-          {alert.gap_eur.toLocaleString()}€ <span style={styles.mLabel}>gap</span>
-        </span>
-        <span style={styles.mDiv}>|</span>
-        <span style={styles.metric}>
-          {diesSenseSimulats}d <span style={styles.mLabel}>sense compra</span>
-        </span>
-        <span style={styles.mDiv}>|</span>
-        <span style={styles.metric}>
-          {simCicle > 0 ? `${simCicle.toFixed(0)}d` : '-'} <span style={styles.mLabel}>cicle{simCicleStd > 0 ? ` ±${simCicleStd.toFixed(0)}` : ''}</span>
-        </span>
+        <div style={styles.metric}>
+          <span style={{ ...styles.mValue, color: shareColor }}>{(alert.share_12m * 100).toFixed(0)}%</span>
+          <span style={styles.mLabel}>{shareLabel}</span>
+        </div>
+        <div style={styles.metric}>
+          <span style={styles.mValue}>{alert.gap_eur.toLocaleString()}€</span>
+          <span style={styles.mLabel}>gap</span>
+        </div>
+        <div style={styles.metric}>
+          <span style={styles.mValue}>{diesSenseSimulats}d</span>
+          <span style={styles.mLabel}>sense compra</span>
+        </div>
+        <div style={styles.metric}>
+          <span style={styles.mValue}>{simCicle > 0 ? `${simCicle.toFixed(0)}d` : '-'}</span>
+          <span style={styles.mLabel}>cicle{simCicleStd > 0 ? ` ±${simCicleStd.toFixed(0)}` : ''}</span>
+        </div>
       </div>
+
 
       {/* ── Feedback ───────────────────────────────────── */}
       {alert.tractada && (
@@ -393,173 +395,177 @@ function FeedbackForm({ alert }: { alert: Alerta }) {
   )
 }
 
-const styles: Record<string, React.CSSProperties> = {
+const styles: Record<string, CSSProperties> = {
   backBtn: {
     background: 'none',
     border: 'none',
-    color: '#00B8A9',
-    fontSize: 13,
+    color: '#007AFF',
+    fontSize: 15,
     fontWeight: 600,
     cursor: 'pointer',
-    fontFamily: "'Inter', sans-serif",
-    padding: '20px 0 16px',
-    display: 'block',
+    padding: '24px 0 16px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    transition: 'opacity 0.2s ease',
   },
   hero: {
     background: '#FFFFFF',
-    border: '1px solid #E5E7EB',
-    padding: '20px 24px',
-    marginBottom: 12,
+    borderRadius: 24,
+    padding: '32px',
+    marginBottom: 16,
+    boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+    border: '1px solid rgba(0,0,0,0.05)',
   },
   heroTop: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 32,
   },
   heroId: {
-    fontSize: 20,
-    fontWeight: 700,
-    color: '#111827',
+    fontSize: 28,
+    fontWeight: 800,
+    color: '#000000',
     fontVariantNumeric: 'tabular-nums',
+    letterSpacing: '-0.02em',
   },
   heroSep: {
     color: '#D1D5DB',
-    margin: '0 6px',
-    fontSize: 16,
+    margin: '0 8px',
+    fontSize: 24,
+    fontWeight: 300,
   },
   heroFam: {
-    fontSize: 16,
+    fontSize: 22,
     fontWeight: 600,
-    color: '#374151',
+    color: '#3A3A3C',
+    letterSpacing: '-0.01em',
   },
   heroProv: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  actionBtn: {
-    background: '#F3F4F6',
-    border: '1px solid #D1D5DB',
-    color: '#374151',
-    fontSize: 14,
-    padding: '5px 9px',
-    cursor: 'pointer',
-    lineHeight: 1,
-    fontFamily: "'Inter', sans-serif",
-  },
-  treatBtn: {
-    background: '#111827',
-    border: 'none',
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 600,
-    padding: '7px 16px',
-    cursor: 'pointer',
-    fontFamily: "'Inter', sans-serif",
+    fontSize: 15,
+    color: '#8E8E93',
+    fontWeight: 500,
   },
   chartSvg: {
     display: 'block',
-    marginBottom: 16,
+    marginBottom: 24,
   },
   motiu: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: 14,
+    color: '#3A3A3C',
     lineHeight: 1.5,
     margin: 0,
+    fontWeight: 400,
   },
   metrics: {
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
+    gap: 32,
     background: '#FFFFFF',
-    border: '1px solid #E5E7EB',
-    padding: '14px 20px',
+    borderRadius: 20,
+    padding: '20px 32px',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+    border: '1px solid rgba(0,0,0,0.05)',
     flexWrap: 'wrap' as const,
   },
   metric: {
-    fontSize: 15,
-    fontWeight: 600,
-    color: '#111827',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2,
+  },
+  mValue: {
+    fontSize: 20,
+    fontWeight: 800,
+    color: '#000000',
     fontVariantNumeric: 'tabular-nums',
   },
   mLabel: {
-    fontSize: 11,
-    fontWeight: 400,
-    color: '#9CA3AF',
+    fontSize: 13,
+    fontWeight: 500,
+    color: '#8E8E93',
   },
   mDiv: {
-    color: '#E5E7EB',
-    fontSize: 14,
+    color: '#F2F2F7',
+    fontSize: 24,
+    fontWeight: 200,
   },
 }
 
-const feedbackStyles: Record<string, React.CSSProperties> = {
+const feedbackStyles: Record<string, CSSProperties> = {
   box: {
-    background: '#F9FAFB',
-    border: '1px solid #E5E7EB',
-    padding: '16px 20px',
-    marginTop: 12,
+    background: 'rgba(0, 122, 255, 0.03)',
+    borderRadius: 20,
+    padding: '24px 32px',
+    marginTop: 16,
+    border: '1px solid rgba(0, 122, 255, 0.08)',
   },
   title: {
-    fontSize: 12,
-    fontWeight: 600,
-    color: '#374151',
+    fontSize: 15,
+    fontWeight: 700,
+    color: '#000000',
     display: 'block',
-    marginBottom: 10,
+    marginBottom: 16,
   },
   btns: {
     display: 'flex',
-    gap: 6,
+    gap: 10,
   },
   btn: {
     background: '#FFFFFF',
-    border: '1px solid #D1D5DB',
-    color: '#6B7280',
-    fontSize: 12,
-    fontWeight: 500,
-    padding: '6px 12px',
+    border: '1px solid rgba(0,0,0,0.08)',
+    color: '#3A3A3C',
+    fontSize: 14,
+    fontWeight: 600,
+    padding: '10px 20px',
     cursor: 'pointer',
-    fontFamily: "'Inter', sans-serif",
+    borderRadius: 14,
+    transition: 'all 0.2s ease',
   },
   btnActive: {
-    background: '#111827',
-    border: '1px solid #111827',
+    background: '#000000',
+    border: '1px solid #000000',
     color: '#FFFFFF',
   },
   importeRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 10,
+    gap: 12,
+    marginTop: 16,
   },
   importeLbl: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: 14,
+    fontWeight: 500,
+    color: '#3A3A3C',
   },
   importeInput: {
     background: '#FFFFFF',
-    border: '1px solid #D1D5DB',
-    color: '#111827',
-    fontSize: 13,
-    fontWeight: 600,
-    padding: '6px 10px',
-    width: 100,
-    fontFamily: "'Inter', sans-serif",
+    border: '1px solid rgba(0,0,0,0.1)',
+    color: '#000000',
+    fontSize: 15,
+    fontWeight: 700,
+    padding: '10px 16px',
+    width: 120,
+    borderRadius: 12,
   },
   saveBtn: {
-    background: '#00B8A9',
+    background: '#007AFF',
     border: 'none',
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 600,
-    padding: '7px 20px',
+    fontSize: 15,
+    fontWeight: 700,
+    padding: '12px 32px',
     cursor: 'pointer',
-    fontFamily: "'Inter', sans-serif",
-    marginTop: 10,
+    borderRadius: 16,
+    marginTop: 16,
+    transition: 'all 0.2s ease',
   },
   saved: {
-    fontSize: 13,
-    color: '#059669',
-    fontWeight: 600,
+    fontSize: 15,
+    color: '#34C759',
+    fontWeight: 700,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
   },
 }
