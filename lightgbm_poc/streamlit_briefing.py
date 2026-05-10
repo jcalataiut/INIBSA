@@ -47,6 +47,7 @@ def predict_all_purchases(client_id, familia):
     df = pd.read_csv(DATA_PATH, low_memory=False)
     df['Fecha'] = pd.to_datetime(df['Fecha'])
     grp = df[(df['Id_Cliente'] == client_id) & (df['Familia_Potencial'] == familia)]
+    grp = grp[grp['es_devolucion'] == 0]  # només compres reals, no devolucions
     grp = grp.sort_values('Fecha')
     dates = grp['Fecha'].unique()
     if len(dates) < 2:
@@ -76,9 +77,12 @@ def predict_all_purchases(client_id, familia):
             actual = None
             in_window = None  # no ground truth
 
+        amount = grp[grp['Fecha'] == purchase_date]['Valores_H'].sum()
+
         rows.append({
             'n': i + 1,
             'purchase_date': purchase_date,
+            'amount': amount,
             'p25': p25,
             'p50': p50,
             'p75': p75,
@@ -112,138 +116,134 @@ if sel_fam:
 
     if tdf is not None and len(tdf) > 0:
         import matplotlib.pyplot as plt
+        import matplotlib.dates as mdates
 
         n_compras = len(tdf)
-        idx_pred = n_compras  # per defecte: última compra (predicció futura)
 
         # ── Slider ──
         st.markdown("### ⏱ Simulador: en quina compra estàs?")
         idx_pred = st.slider(
             "Arrossega per canviar de compra",
-            min_value=1, max_value=n_compras,
-            value=n_compras,  # última per defecte
+            min_value=1, max_value=n_compras, value=n_compras,
             format="Compra #%d",
-            help="Cada compra mostra la predicció de l'interval fins la següent.",
+            help="Selecciona des de quina compra vols predir la següent.",
         )
 
-        r = tdf.iloc[idx_pred - 1]
-        d = r['purchase_date']
-        p25, p50, p75 = r['p25'], r['p50'], r['p75']
-        actual = r['actual']
-        in_win = r['in_window']
-        is_last = r['es_ultima']
+        # Historial + predicció: només una línia de temps
+        subset = tdf.iloc[:idx_pred].copy()
+        r_current = subset.iloc[-1]
+        d_current = r_current['purchase_date']
+        p25, p50, p75 = r_current['p25'], r_current['p50'], r_current['p75']
+        actual = r_current['actual']
+        in_win = r_current['in_window']
+        is_last = r_current['es_ultima']
 
-        # ── Single prediction view ──
-        st.subheader(f"Compra #{idx_pred}")
-        c1, c2, c3 = st.columns([2, 2, 3])
-        c1.metric("Data compra", d.strftime('%d/%m/%Y'))
-        c2.metric("És l'última?", "✅ Sí" if is_last else "❌ No")
-
-        # Gantt-like visualization for this single purchase
-        fig, ax = plt.subplots(figsize=(12, 2.5))
+        # ── Timeline vertical lines ──
+        fig, ax = plt.subplots(figsize=(14, 3))
         fig.patch.set_facecolor('#FAFBFC')
 
-        max_x = max(p75 + 30, (actual + 20) if pd.notna(actual) else 150)
-        ax.axhline(0.5, 0, max_x, color='#D1D5DB', linewidth=5, zorder=1)
+        min_date = subset['purchase_date'].min()
+        max_date = d_current + timedelta(days=int(p75) + 40)
+        if pd.notna(actual):
+            max_date = max(max_date, d_current + timedelta(days=int(actual) + 20))
 
-        # Predicted interval
-        ax.axvspan(p25, p75, ymin=0.15, ymax=0.85, alpha=0.35, color='#10B981', zorder=2,
-                   label=f'Predicció: +{p25:.0f} a +{p75:.0f} dies')
+        # Bar heights = purchase amount (euros)
+        amounts = []
+        for i2, (_, r2) in enumerate(subset.iterrows()):
+            d2 = r2['purchase_date']
+            amt = r2['amount']
+            amounts.append(amt)
+            is_current = i2 == len(subset) - 1
 
-        # Last purchase marker
-        ax.plot(0, 0.5, 's', color='#6B7280', markersize=20, zorder=6)
-        ax.annotate(f'Compra #{idx_pred}\ndia 0', (0, 0.5), fontsize=10,
-                    color='#6B7280', ha='right', va='center', fontweight='bold')
+            color = '#1E3A8A' if is_current else '#3B82F6'
+            alpha_val = 1.0 if is_current else 0.5 + 0.3 * (i2 / max(1, len(subset) - 1))
 
-        # p50 marker
-        ax.plot(p50, 0.5, 'D', color='#F59E0B', markersize=18, zorder=5)
-        ax.annotate(f'Mediana\n+{p50:.0f}d', (p50, 0.6), fontsize=9,
+            # Vertical bar = import comprat
+            ax.vlines(d2, 0, amt, color=color, linewidth=4 if is_current else 2.5,
+                      alpha=alpha_val, zorder=4)
+            ax.plot(d2, amt, 'o', color=color, markersize=4 if is_current else 2,
+                    alpha=alpha_val, zorder=4)
+
+            # Label
+            lbl = f"#{r2['n']}"
+            ax.annotate(lbl, (d2, amt + amt * 0.05), fontsize=8,
+                        color=color, ha='center', va='bottom',
+                        fontweight='bold' if is_current else 'normal',
+                        alpha=alpha_val)
+
+            # Connection between consecutive buys
+            if i2 > 0:
+                prev_d = subset.iloc[i2 - 1]['purchase_date']
+                ax.plot([prev_d, d2], [amt * 0.02, amt * 0.02], color='#9CA3AF',
+                        linewidth=1, linestyle=':', alpha=0.3, zorder=1)
+
+        y_max = max(amounts) * 1.3
+
+        # ARA marker
+        ax.annotate('← ARA', (d_current, amounts[-1] * 1.15), fontsize=11,
+                    color='#1E3A8A', ha='center', fontweight='bold')
+
+        # ── Prediction bar (only from current purchase, below baseline) ──
+        p25_date = d_current + timedelta(days=int(p25))
+        p75_date = d_current + timedelta(days=int(p75))
+        p50_date = d_current + timedelta(days=int(p50))
+
+        # Green window below baseline
+        ax.axvspan(p25_date, p75_date, ymin=0, ymax=0.08, alpha=0.25,
+                   color='#10B981', zorder=2)
+        ax.plot([d_current, p75_date], [0, 0], color='#10B981', linewidth=10,
+                alpha=0.4, zorder=2)
+        ax.plot(p50_date, 0, 'D', color='#F59E0B', markersize=16, zorder=6)
+
+        # Prediction annotations
+        ax.annotate(f'Mediana +{p50:.0f}d', (p50_date, -y_max * 0.08), fontsize=10,
                     color='#F59E0B', ha='center', fontweight='bold')
-
-        # p25/p75 markers
-        for t, c, lbl in [(p25, '#10B981', f'p25 +{p25:.0f}d'),
-                          (p75, '#F97316', f'p75 +{p75:.0f}d')]:
-            ax.plot(t, 0.5, 'o', color=c, markersize=12, zorder=4)
-            ax.annotate(lbl, (t, 0.25), fontsize=8, color=c, ha='center', fontweight='bold')
+        ax.annotate(f'[{p25:.0f} – {p75:.0f}] dies', (p75_date, -y_max * 0.14), fontsize=9,
+                    color='#10B981', ha='center', fontweight='bold')
 
         # Actual next purchase
         if pd.notna(actual):
-            actual_color = '#1E3A8A' if in_win else '#DC2626'
-            actual_marker = 'o' if in_win else 'X'
-            ax.plot(actual, 0.5, actual_marker, color=actual_color, markersize=24, zorder=7)
-            status = "✅ CORRECTE" if in_win else "❌ FORA"
-            ax.annotate(f'{status}\nReal: +{actual:.0f}d',
-                        (actual, 0.35), fontsize=10, color=actual_color,
-                        ha='center', va='top', fontweight='bold')
-        else:
-            ax.plot(0, 0.5, 'D', color='#F59E0B', markersize=20, zorder=6)
-            ax.annotate('🔮 PREDICCIÓ\n(sense real encara)', (0, 0.25),
-                        fontsize=10, color='#F59E0B', ha='left', fontweight='bold')
+            act_d = d_current + timedelta(days=int(actual))
+            color_act = '#1E3A8A' if in_win else '#DC2626'
+            ax.plot(act_d, 0, 'o' if in_win else 'X', color=color_act, markersize=18, zorder=7)
+            ax.annotate(f'Real +{actual:.0f}d {"✅" if in_win else "❌"}',
+                        (act_d, -y_max * 0.06), fontsize=9, color=color_act,
+                        ha='center', fontweight='bold')
 
-        ax.set_xlim(-5, max_x + 10)
-        ax.set_ylim(0, 1)
-        ax.set_xlabel('Dies des de la compra', fontsize=12, fontweight='bold')
-        ax.tick_params(left=False, labelleft=False)
-        ax.grid(True, axis='x', alpha=0.2, linestyle=':')
-        ax.legend(fontsize=9, loc='upper right')
-        ax.set_title(f'Client {selected_id} · {sel_fam} · #{idx_pred}: interval fins la propera compra',
-                     fontsize=13, fontweight='bold')
+        ax.set_xlim(min_date - timedelta(days=20), max_date)
+        ax.set_ylim(-y_max * 0.3, y_max)
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m/%Y'))
+        ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+        plt.setp(ax.get_xticklabels(), rotation=30, ha='right', fontsize=9)
+        ax.tick_params(left=False, labelleft=False, right=False, labelright=False)
+        ax.set_xlabel('Temps real', fontsize=11, fontweight='bold')
+        ax.grid(True, axis='x', alpha=0.15, linestyle=':')
+        ax.set_title(f'Client {selected_id} · {sel_fam} — Compra #{idx_pred} → predicció de la següent',
+                     fontsize=13, fontweight='bold', pad=10)
+
+        # Divider line at 0
+        ax.axhline(0, color='#6B7280', linewidth=1, alpha=0.2, zorder=1)
+
+        # Vertical line at current purchase
+        ax.vlines(d_current, -y_max * 0.05, amounts[-1], color='#1E3A8A', linewidth=1.5,
+                  linestyle='--', alpha=0.3, zorder=1)
+
         plt.tight_layout()
         st.pyplot(fig, width='stretch')
 
-        # Stats below
+        # ── Stats ──
+        st.subheader(f"📐 Des de compra #{idx_pred}")
         col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+        col_s1.metric("Data compra", d_current.strftime('%d/%m/%Y'))
+        p50_est_date = d_current + timedelta(days=int(p50))
+        col_s2.metric("Mediana", f"+{p50:.0f} dies → {p50_est_date.strftime('%d/%m/%Y')}")
+        col_s3.metric("Finestra", f"[+{p25:.0f}, +{p75:.0f}] dies")
+        col_s4.metric("És l'última?", "✅ Sí" if is_last else "❌ No (hi ha dades reals)")
+
         if pd.notna(actual):
-            col_s1.metric("Interval real", f"+{actual:.0f}d")
-            col_s2.metric("Mediana predita", f"+{p50:.0f}d (error {abs(actual-p50):.0f}d)")
-            col_s3.metric("Finestra predita", f"[+{p25:.0f}, +{p75:.0f}]")
-            col_s4.metric("✅ Dins finestra?", "✅ Sí" if in_win else "❌ No")
-        else:
-            col_s1.metric("Predicció mediana", f"+{p50:.0f}d")
-            col_s2.metric("Finestra", f"[+{p25:.0f}, +{p75:.0f}] dies")
-            col_s3.metric("Data estimada", (d + timedelta(days=int(p50))).strftime('%d/%m/%Y'))
-            col_s4.metric("Fins", (d + timedelta(days=int(p75))).strftime('%d/%m/%Y'))
-
-        # ── Full timeline (collapsible) ──
-        with st.expander("📊 Veure timeline completa de totes les compres", expanded=False):
-            import matplotlib.dates as mdates
-            fig2, ax2 = plt.subplots(figsize=(14, max(3, n_compras * 0.5)))
-            fig2.patch.set_facecolor('#FAFBFC')
-
-            for i2, (_, r2) in enumerate(tdf.iterrows()):
-                y2 = i2
-                d2 = r2['purchase_date']
-                p25_2, p50_2, p75_2 = r2['p25'], r2['p50'], r2['p75']
-                actual2 = r2['actual']
-                in_win2 = r2['in_window']
-
-                if in_win2 is True:    bar_c = '#10B981'
-                elif in_win2 is False: bar_c = '#EF4444'
-                else:                  bar_c = '#10B981'
-
-                end2 = d2 + timedelta(days=int(p75_2))
-                ax2.plot([d2 + timedelta(days=int(p25_2)), end2], [y2, y2],
-                         color=bar_c, linewidth=5, alpha=0.5, zorder=2)
-                ax2.plot(d2 + timedelta(days=int(p50_2)), y2, 'D', color='#F59E0B', markersize=8, zorder=4)
-
-                if pd.notna(actual2):
-                    act_d = d2 + timedelta(days=int(actual2))
-                    c2 = '#1E3A8A' if in_win2 else '#DC2626'
-                    ax2.plot(act_d, y2, 'o', color=c2, markersize=10, zorder=5)
-
-                ax2.plot(d2, y2, 'o', color='#6B7280', markersize=6, zorder=3)
-                if i2 == idx_pred - 1:
-                    ax2.axhline(y2, color='#F59E0B', linewidth=1.5, linestyle=':', alpha=0.8)
-
-            ax2.set_yticks(range(n_compras))
-            ax2.set_yticklabels([f"#{r2['n']} {r2['purchase_date'].strftime('%d/%m/%y')}"
-                                 for _, r2 in tdf.iterrows()], fontsize=7)
-            ax2.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m/%Y'))
-            ax2.grid(True, axis='x', alpha=0.2, linestyle=':')
-            ax2.set_title('Timeline completa', fontsize=12, fontweight='bold')
-            plt.setp(ax2.get_xticklabels(), rotation=30, ha='right', fontsize=7)
-            plt.tight_layout()
-            st.pyplot(fig2, width='stretch')
+            st.success(f"**Resultat**: la següent compra va ser **+{actual:.0f} dies** després. "
+                       f"{'✅ Dins la finestra predita.' if in_win else '❌ Fora de la finestra.'} "
+                       f"Error: {abs(actual-p50):.0f} dies.")
 
         # ── Global stats ──
         completed = tdf[tdf['actual'].notna()]
@@ -254,7 +254,7 @@ if sel_fam:
 
         st.markdown("---")
         col_g1, col_g2, col_g3 = st.columns(3)
-        col_g1.metric("Compres històriques", n_total)
+        col_g1.metric("Compres amb real", n_total)
         col_g2.metric("✅ Dins finestra", f"{n_ok}/{n_total} ({coverage:.0%})")
         col_g3.metric("Error mitjà (MedAE)", f"{mae:.0f} dies")
     else:
