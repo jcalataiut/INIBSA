@@ -14,7 +14,10 @@ interface Props {
 }
 
 const COMMODITIES_SEGMENTS = ['lleial', 'promiscu', 'fuga']
-const COMMODITIES_TIPUS = ['anticipacio', 'reactiva', 'geographical_alert']
+const COMMODITIES_TIPUS = [
+  'anticipacio', 'reactiva', 'geographical_alert',
+  'sow_lleial_promiscu', 'sow_promiscu_fuga', 'sow_fuga_promiscu', 'sow_promiscu_lleial'
+]
 
 const LABEL_SEG: Record<string, string> = {
   lleial: 'Lleial', promiscu: 'Promiscu', fuga: 'Fuga'
@@ -22,8 +25,13 @@ const LABEL_SEG: Record<string, string> = {
 const URGENCIES = ['critica', 'alta', 'mitjana', 'baixa']
 
 const LABEL_TIPUS: Record<string, string> = {
-  anticipacio: 'Anticipació', reactiva: 'Reactiva',
-  geographical_alert: 'Alerta Geogràfica',
+  anticipacio: 'Anticipació', 
+  reactiva: 'Reactiva',
+  geographical_alert: 'Geogràfica',
+  sow_lleial_promiscu: 'Lleial a Promiscu',
+  sow_promiscu_fuga: 'Promiscu a Fuga',
+  sow_fuga_promiscu: 'Fuga a Promiscu',
+  sow_promiscu_lleial: 'Promiscu a Lleial',
 }
 
 export default function Filters(props: Props) {

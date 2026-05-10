@@ -27,11 +27,15 @@ export default function ContactActions({ alert, onToggleTreated, variant = 'comp
       return `ASSUMPTE: Oportunitat a ${provincia || 'la zona'} - ${familia_potencial} - Inibsa\n\nHola,\n\nEstem analitzant la zona de ${provincia || 'la vostra clínica'} i hem vist que hi ha una gran oportunitat per optimitzar el vostre Share of Wallet en ${familia_potencial}. Moltes clíniques veïnes ja ho estan aprofitant. Ens agradaria comentar com millorar les vostres condicions.\n\nSalutacions,\nEquip Inibsa (Client #${id_cliente})`;
     }
 
-    if (tipus_alerta === 'fugat') {
-      return `ASSUMPTE: Us trobem a faltar! - Inibsa\n\nHola,\n\nFa temps que no registrem cap comanda de ${familia_potencial}. Ens agradaria saber si podem fer alguna cosa per recuperar la vostra confiança o si teniu alguna necessitat que no hàgim cobert.\n\nSalutacions,\nEquip Inibsa (Client #${id_cliente})`;
+    if (tipus_alerta.startsWith('sow_')) {
+      const sharePct = (a.share_12m * 100).toFixed(0);
+      if (tipus_alerta === 'sow_promiscu_fuga') {
+        return `ASSUMPTE: Revisió de col·laboració - ${familia_potencial} - Inibsa\n\nHola,\n\nEns posem en contacte amb vosaltres perquè hem detectat una disminució molt important en el vostre volum de ${familia_potencial}. Per a Inibsa sou un client preferencial i ens agradaria saber si hi ha hagut algun inconvenient o si podem oferir-vos millors condicions per recuperar la vostra confiança.\n\nSalutacions,\nEquip Inibsa (Client #${id_cliente})`;
+      }
+      return `ASSUMPTE: Millora de condicions en ${familia_potencial} - Inibsa\n\nHola,\n\nEstem revisant els nostres acords comercials per a la línia de ${familia_potencial}. Hem vist que actualment el vostre share és del ${sharePct}%, i ens agradaria parlar sobre com podríem arribar a un acord més global que us beneficiï econòmicament.\n\nSalutacions,\nEquip Inibsa (Client #${id_cliente})`;
     }
 
-    return `Hola, contactem amb vosaltres pel client #${id_cliente} per parlar de ${familia_potencial}.`;
+    return `ASSUMPTE: Seguiment comercial - Inibsa\n\nHola,\n\nEs posa en contacte amb vosaltres el vostre gestor d'Inibsa per comentar l'evolució de la línia de ${familia_potencial} i revisar si teniu alguna necessitat pendent que puguem resoldre.\n\nQuedem a la vostra disposició.\n\nSalutacions,\nEquip Inibsa (Client #${id_cliente})`;
   }
 
   const handleMail = (e: MouseEvent) => {
@@ -145,7 +149,19 @@ export default function ContactActions({ alert, onToggleTreated, variant = 'comp
                       <p>"Bones, estem revisant les clíniques de la zona de {alert.provincia} i m'agradaria comentar-vos algunes promocions especials que tenim ara en {alert.familia_potencial} per als nostres clients més actius. Us aniria bé parlar-ne un moment?"</p>
                     )}
                     {alert.tipus_alerta === 'fugat' && (
-                      <p>"Hola, feia temps que no parlàvem i volíem saber com us va tot. Hem vist que fa temps que no ens demaneu {alert.familia_potencial} i voldríem saber si podem fer alguna cosa per millorar el nostre servei amb vosaltres."</p>
+                      <p>"Hola, fa temps que no tenim el plaer de parlar. He vist que fa un temps que no ens demaneu {alert.familia_potencial} i voldríem saber si ha passat alguna cosa o si podem fer alguna oferta per recuperar-vos com a clients."</p>
+                    )}
+                    {alert.tipus_alerta === 'sow_lleial_promiscu' && (
+                      <p>"Bones! Trucava perquè he vist que darrerament heu baixat una mica el volum de {alert.familia_potencial}. Hi ha hagut algun canvi en la clínica o algun preu de la competència que vulgueu que revisem per tornar a ser el vostre proveïdor principal?"</p>
+                    )}
+                    {alert.tipus_alerta === 'sow_promiscu_fuga' && (
+                      <p>"Hola, em poso en contacte amb caràcter urgent perquè hem detectat una caiguda molt forta en {alert.familia_potencial}. No voldríem perdre la vostra confiança. Què podem fer per millorar la nostra oferta actual?"</p>
+                    )}
+                    {alert.tipus_alerta === 'sow_fuga_promiscu' && (
+                      <p>"Bon dia! Estem molt contents de veure que heu tornat a confiar en nosaltres per a {alert.familia_potencial}. Trucava per agrair-vos la comanda i saber si podem fer res més per consolidar aquesta tornada."</p>
+                    )}
+                    {alert.tipus_alerta === 'sow_promiscu_lleial' && (
+                      <p>"Hola! Enhorabona, hem vist que ja sou clients 100% lleials en {alert.familia_potencial}. Us truco per agrair-vos la fidelitat i confirmar que teniu les millors condicions aplicades al vostre compte."</p>
                     )}
                   </div>
                   

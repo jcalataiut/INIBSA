@@ -170,6 +170,7 @@ def ensure_cache(today_str: str, family: str | None = None, force: bool = False)
     from backend.engine.commodities_engine import run as run_commodities
     from backend.engine.technicals_engine import run as run_technicals
     from backend.engine.geographical_engine import run as run_geographical
+    from backend.engine.sow_engine import run as run_sow
 
     engine = get_engine()
     with engine.connect() as conn:
@@ -200,6 +201,7 @@ def ensure_cache(today_str: str, family: str | None = None, force: bool = False)
     parts = []
     parts.append(_run_engine(run_commodities, today_str, "commodities"))
     parts.append(_run_engine(run_technicals, today_str, "technicals"))
+    parts.append(_run_engine(run_sow, today_str, "sow"))
     
     # Executar engine geogràfic usant la cache generada prèviament per obtenir el share
     alerts_temp = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()

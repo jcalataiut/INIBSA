@@ -14,6 +14,10 @@ const TIPUS_STYLE: Record<string, { label: string; color: string }> = {
   reactiva:           { label: 'REACTIVA',  color: '#DC2626' },
   fugat:              { label: 'FUGAT',     color: '#6B7280' },
   geographical_alert: { label: 'ALERTA GEOGRÀFICA', color: '#3B82F6' },
+  sow_lleial_promiscu: { label: 'SOW: CAIGUDA', color: '#F59E0B' },
+  sow_promiscu_fuga:   { label: 'SOW: RISC', color: '#DC2626' },
+  sow_fuga_promiscu:   { label: 'SOW: RECUPERACIÓ', color: '#10B981' },
+  sow_promiscu_lleial: { label: 'SOW: ÈXIT', color: '#6366F1' },
 }
 
 const URGENCIA_STYLE: Record<string, string> = {
@@ -62,7 +66,7 @@ const AlertCard = memo(function AlertCard({ alert, onToggleTreated, onClick }: P
             <span style={styles.mLbl}>sense compra</span>
           </div>
           <div style={styles.metric}>
-            <span style={styles.mVal}>{alert.cicle_mig_dies ? `${alert.cicle_mig_dies.toFixed(0)}d` : '-'}</span>
+            <span style={styles.mVal}>{alert.cicle_mig_dies?.toFixed(0)}d</span>
             <span style={styles.mLbl}>cicle</span>
           </div>
         </div>

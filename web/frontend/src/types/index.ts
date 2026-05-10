@@ -74,6 +74,10 @@ export const ALERTA_LABELS: Record<string, string> = {
   reactiva: 'Reactiva',
   fugat: 'Fugat',
   geographical_alert: 'Alerta Geogràfica',
+  sow_lleial_promiscu: 'SoW: Lleial a Promiscu',
+  sow_promiscu_fuga: 'SoW: Promiscu a Fuga',
+  sow_fuga_promiscu: 'SoW: Fuga a Promiscu',
+  sow_promiscu_lleial: 'SoW: Promiscu a Lleial',
 }
 
 export interface MapPoint {
