@@ -3,9 +3,8 @@ import numpy as np
 from fastapi import APIRouter, Query
 from sqlalchemy import text
 from backend.database import get_engine, ensure_cache
-from backend.models.schemas import AlertaOut, GeoContextOut, GeoPointOut
+from backend.models.schemas import AlertaOut
 from backend.config import today_str
-from backend.engine.commodities_engine import get_geographical_context
 
 router = APIRouter(prefix="/api/alerts", tags=["alerts"])
 
@@ -25,30 +24,6 @@ def v(val, default=None):
     if val is None or (isinstance(val, float) and np.isnan(val)):
         return default
     return val
-
-@router.get("/geo-context", response_model=GeoContextOut)
-def get_geo_context(
-    family: str = Query(...),
-    today: str = Query(default_factory=today_str),
-):
-    today_value = today if isinstance(today, str) else today.strftime("%Y-%m-%d")
-    ensure_cache(today_value)
-    points_df = get_geographical_context(today=today_value, family=family)
-    points = [
-        GeoPointOut(
-            id_cliente=int(row["id_cliente"]),
-            familia_potencial=row["familia_potencial"],
-            cod_postal=row["cod_postal"],
-            city=row["city"],
-            provincia=row["provincia"] or "",
-            latitude=float(row["latitude"]),
-            longitude=float(row["longitude"]),
-            share_12m=float(v(row["share_12m"], 0)),
-            gap_eur=float(v(row["gap_eur"], 0)),
-        )
-        for _, row in points_df.iterrows()
-    ]
-    return GeoContextOut(familia_potencial=family, points=points)
 
 @router.get("")
 def get_alerts(
@@ -92,10 +67,6 @@ def get_alerts(
         alert = AlertaOut(
             id_cliente=int(row["id_cliente"]),
             provincia=row.get("provincia") or "",
-            cod_postal=v(row.get("cod_postal")),
-            city=v(row.get("city")),
-            latitude=float(v(row.get("latitude"))) if v(row.get("latitude")) is not None else None,
-            longitude=float(v(row.get("longitude"))) if v(row.get("longitude")) is not None else None,
             familia_potencial=row["familia_potencial"],
             segment=row["segment"],
             tipus_alerta=row["tipus_alerta"],
@@ -116,11 +87,6 @@ def get_alerts(
             prioritat=float(v(row["prioritat"], 0)),
             motiu=v(row["motiu"]) or "",
             data_alerta=str(row["data_alerta"]),
-            share_velocity=float(v(row.get("share_velocity"))) if v(row.get("share_velocity")) is not None else None,
-            share_alerta=v(row.get("share_alerta")),
-            geo_neighbor_count=int(v(row.get("geo_neighbor_count"))) if v(row.get("geo_neighbor_count")) is not None else None,
-            geo_neighbor_avg_share=float(v(row.get("geo_neighbor_avg_share"))) if v(row.get("geo_neighbor_avg_share")) is not None else None,
-            geo_share_gap=float(v(row.get("geo_share_gap"))) if v(row.get("geo_share_gap")) is not None else None,
             tractada=key in treated_set,
         )
         alerts.append(alert)

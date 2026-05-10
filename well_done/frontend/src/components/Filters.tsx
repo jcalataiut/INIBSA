@@ -11,15 +11,22 @@ interface Props {
   onShowTreatedChange: (v: boolean) => void
 }
 
-const SEGMENTS = ['leal', 'promiscuo', 'fugat']
-const TIPUS = ['anticipacio', 'reactiva', 'fugat']
-const URGENCIES = ['critica', 'alta', 'mitjana', 'baixa']
+const SEGMENTS = ['leal', 'promiscuo', 'actiu_regular', 'actiu_esporadic', 'inactiu_recent', 'inactiu_total', 'fugat']
+const TIPUS = ['anticipacio', 'reactiva', 'anomalia_groga', 'anomalia_vermella', 'monitoritzar', 'fugat']
 
 const LABEL_SEG: Record<string, string> = {
-  leal: 'Leal', promiscuo: 'Promiscuo', fugat: 'Fugat',
+  leal: 'Leal', promiscuo: 'Promiscuo',
+  actiu_regular: 'Actiu Regular', actiu_esporadic: 'Actiu Esporàdic',
+  inactiu_recent: 'Inactiu Recent', inactiu_total: 'Inactiu Total',
+  fugat: 'Fugat',
 }
+const URGENCIES = ['critica', 'alta', 'mitjana', 'baixa']
+
 const LABEL_TIPUS: Record<string, string> = {
-  anticipacio: 'Anticipació', reactiva: 'Reactiva', fugat: 'Fugat',
+  anticipacio: 'Anticipació', reactiva: 'Reactiva',
+  anomalia_groga: 'Anomalia Groga', anomalia_vermella: 'Anomalia Vermella',
+  monitoritzar: 'Monitoritzar',
+  fugat: 'Fugat',
 }
 
 export default function Filters(props: Props) {

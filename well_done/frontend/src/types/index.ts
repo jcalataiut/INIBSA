@@ -1,10 +1,6 @@
 export interface Alerta {
   id_cliente: number
   provincia: string
-  cod_postal: string | null
-  city: string | null
-  latitude: number | null
-  longitude: number | null
   familia_potencial: string
   segment: string
   segment_anterior: string | null
@@ -26,11 +22,6 @@ export interface Alerta {
   prioritat: number
   motiu: string
   data_alerta: string
-  share_velocity: number | null
-  share_alerta: string | null
-  geo_neighbor_count: number | null
-  geo_neighbor_avg_share: number | null
-  geo_share_gap: number | null
   tractada: boolean
 }
 
@@ -57,6 +48,10 @@ export const SEGMENT_COLORS: Record<string, string> = {
   leal: '#00B8A9',
   promiscuo: '#F4A261',
   fugat: '#6B7280',
+  actiu_regular: '#00B8A9',
+  actiu_esporadic: '#F4A261',
+  inactiu_recent: '#E74C3C',
+  inactiu_total: '#6B7280',
 }
 
 export interface ClientDetail {
@@ -67,26 +62,11 @@ export interface ClientDetail {
   alertes: { tipus_alerta: string; familia_potencial: string; prioritat: number; motiu: string }[]
 }
 
-export interface GeoPoint {
-  id_cliente: number
-  familia_potencial: string
-  cod_postal: string
-  city: string
-  provincia: string
-  latitude: number
-  longitude: number
-  share_12m: number
-  gap_eur: number
-}
-
-export interface GeoContext {
-  familia_potencial: string
-  points: GeoPoint[]
-}
-
 export const ALERTA_LABELS: Record<string, string> = {
   anticipacio: 'Anticipació',
   reactiva: 'Reactiva',
-  geografica: 'Geogràfica',
   fugat: 'Fugat',
+  anomalia_groga: 'Anomalia Groga',
+  anomalia_vermella: 'Anomalia Vermella',
+  monitoritzar: 'Monitoritzar',
 }

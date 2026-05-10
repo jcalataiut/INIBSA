@@ -66,10 +66,6 @@ def init_db():
                 id SERIAL PRIMARY KEY,
                 id_cliente INTEGER NOT NULL,
                 provincia VARCHAR(100),
-                cod_postal VARCHAR(20),
-                city VARCHAR(120),
-                latitude NUMERIC,
-                longitude NUMERIC,
                 familia_potencial VARCHAR(50),
                 segment VARCHAR(20),
                 segment_anterior VARCHAR(20),
@@ -90,24 +86,10 @@ def init_db():
                 dies_stock NUMERIC,
                 prioritat NUMERIC,
                 motiu TEXT,
-                share_velocity NUMERIC,
-                share_alerta VARCHAR(20),
-                geo_neighbor_count INTEGER,
-                geo_neighbor_avg_share NUMERIC,
-                geo_share_gap NUMERIC,
                 data_alerta DATE NOT NULL,
                 created_at TIMESTAMP DEFAULT NOW()
             )
         """))
-        conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS cod_postal VARCHAR(20)"))
-        conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS city VARCHAR(120)"))
-        conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS latitude NUMERIC"))
-        conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS longitude NUMERIC"))
-        conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS share_velocity NUMERIC"))
-        conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS share_alerta VARCHAR(20)"))
-        conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS geo_neighbor_count INTEGER"))
-        conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS geo_neighbor_avg_share NUMERIC"))
-        conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS geo_share_gap NUMERIC"))
         conn.execute(text("""
             CREATE INDEX IF NOT EXISTS idx_cache_data ON alertes_cache(data_alerta)
         """))
@@ -150,40 +132,48 @@ def clear_cache(today: str):
         conn.execute(text("DELETE FROM alertes_cache WHERE data_alerta = :today"), {"today": today})
 
 COLS_CACHE = [
-    "id_cliente", "provincia", "cod_postal", "city", "latitude", "longitude", "familia_potencial", "segment",
+    "id_cliente", "provincia", "familia_potencial", "segment",
     "segment_anterior", "tipus_alerta", "urgencia", "canal",
     "share_12m", "potencial_anual_eur", "euros_12m", "gap_eur",
     "dies_sense_compra", "num_intervals", "cicle_mig_dies",
     "cicle_std_dies", "dies_retard", "z_score",
     "proxim_pedido_esperat", "dies_stock", "prioritat", "motiu",
-    "share_velocity", "share_alerta", "geo_neighbor_count", "geo_neighbor_avg_share", "geo_share_gap",
 ]
 
+def _run_engine(run_fn, today_str, label):
+    """Executa un engine i retorna el DataFrame d'alertes. Bufa excepcions."""
+    try:
+        df, _ = run_fn(today=today_str, verbose=False)
+        if df is not None and len(df) > 0:
+            return df
+    except Exception as e:
+        print(f"⚠️  Error en {label}: {e}")
+    return pd.DataFrame()
+
+
 def ensure_cache(today_str: str, family: str | None = None):
-    from backend.engine.commodities_engine import run
+    from backend.engine.commodities_engine import run as run_commodities
+    from backend.engine.technicals_engine import run as run_technicals
+
     engine = get_engine()
     with engine.connect() as conn:
         cached = conn.execute(
             text("SELECT COUNT(*) FROM alertes_cache WHERE data_alerta = :today"),
             {"today": today_str}
         ).scalar()
-        geo_ready = conn.execute(
-            text("""
-                SELECT COUNT(*) FROM alertes_cache
-                WHERE data_alerta = :today
-                  AND (tipus_alerta = 'geografica' OR cod_postal IS NOT NULL)
-            """),
-            {"today": today_str}
-        ).scalar()
-    if cached > 0 and geo_ready > 0:
+    if cached > 0:
         return
     clear_cache(today_str)
-    try:
-        alerts_df, _ = run(today=today_str, verbose=False)
-    except Exception:
-        alerts_df = pd.DataFrame()
+
+    # Executar ambdós motors
+    parts = []
+    parts.append(_run_engine(run_commodities, today_str, "commodities"))
+    parts.append(_run_engine(run_technicals, today_str, "technicals"))
+
+    alerts_df = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
     if alerts_df.empty:
         return
+
     alerts_df = alerts_df.replace({np.nan: None})
     for c in COLS_CACHE:
         if c not in alerts_df.columns:
@@ -192,6 +182,8 @@ def ensure_cache(today_str: str, family: str | None = None):
     alerts_df[COLS_CACHE + ["data_alerta"]].to_sql(
         "alertes_cache", engine, if_exists="append", index=False, method="multi"
     )
+
+    # Netejar treated_alerts obsoletes
     active_keys = set(
         f"{r['id_cliente']}_{r['familia_potencial']}_{r['tipus_alerta']}"
         for _, r in alerts_df.iterrows()

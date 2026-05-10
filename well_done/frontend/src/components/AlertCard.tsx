@@ -13,20 +13,29 @@ const URG: Record<string, { bg: string; txt: string }> = {
   baixa:   { bg: '#F3F4F6', txt: '#4B5563' },
 }
 
+const TIPUS_STYLE: Record<string, { label: string; color: string }> = {
+  anticipacio:      { label: 'ANTICIPAT', color: '#059669' },
+  reactiva:         { label: 'REACTIVA',  color: '#DC2626' },
+  fugat:            { label: 'FUGAT',     color: '#6B7280' },
+  anomalia_groga:   { label: 'ANOMALIA',  color: '#D97706' },
+  anomalia_vermella:{ label: 'VERMELLA',  color: '#DC2626' },
+  monitoritzar:     { label: 'MONITOR',   color: '#3B82F6' },
+}
+
+function segmentLabel(seg: string, share: number): string {
+  if (seg === 'fugat') return 'fugat'
+  if (seg === 'actiu_regular' || seg === 'leal') return 'leal'
+  if (seg === 'actiu_esporadic' || seg === 'promiscuo') return 'promiscuo'
+  if (seg === 'inactiu_recent' || seg === 'inactiu_total') return 'inactiu'
+  return share >= 0.70 ? 'leal' : 'promiscuo'
+}
+
 export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
   const isFugat = alert.segment === 'fugat'
-  const isGeo = alert.tipus_alerta === 'geografica'
-  const shareLabel = isFugat ? 'fugat' : (alert.share_12m >= 0.70 ? 'leal' : 'promiscuo')
+  const sLabel = segmentLabel(alert.segment, alert.share_12m)
   const shareColor = isFugat ? '#6B7280' : (alert.share_12m >= 0.70 ? '#059669' : '#D97706')
 
-  const tipusLabel = alert.tipus_alerta === 'anticipacio' ? 'ANTICIPAT'
-    : alert.tipus_alerta === 'reactiva' ? 'REACTIVA'
-    : alert.tipus_alerta === 'geografica' ? 'GEO'
-    : 'FUGAT'
-  const tipusColor = alert.tipus_alerta === 'anticipacio' ? '#059669'
-    : alert.tipus_alerta === 'reactiva' ? '#DC2626'
-    : alert.tipus_alerta === 'geografica' ? '#2563EB'
-    : '#6B7280'
+  const ts = TIPUS_STYLE[alert.tipus_alerta] || { label: alert.tipus_alerta.replace(/_/g, ' ').toUpperCase(), color: '#6B7280' }
 
   const urg = URG[alert.urgencia] || URG.baixa
 
@@ -40,23 +49,17 @@ export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
           <span style={styles.id}>#{alert.id_cliente}</span>
           <span style={styles.sep}>·</span>
           <span style={styles.familia}>{alert.familia_potencial}</span>
-          {isGeo && alert.city && (
-            <>
-              <span style={styles.sep}>·</span>
-              <span style={styles.location}>{alert.city}{alert.cod_postal ? ` ${alert.cod_postal}` : ''}</span>
-            </>
-          )}
           {!isFugat && (
             <>
               <span style={styles.sep}>·</span>
               <span style={{ ...styles.shareBadge, color: shareColor, borderColor: shareColor }}>
-                {(alert.share_12m * 100).toFixed(0)}% {shareLabel}
+                {(alert.share_12m * 100).toFixed(0)}% {sLabel}
               </span>
             </>
           )}
         </div>
         <div style={styles.right}>
-          <span style={{ ...styles.tag, background: tipusColor }}>{tipusLabel}</span>
+          <span style={{ ...styles.tag, background: ts.color }}>{ts.label}</span>
           {!isFugat && (
             <span style={{ ...styles.tagOutline, background: urg.bg, color: urg.txt }}>
               {alert.urgencia.toUpperCase()}
@@ -72,21 +75,6 @@ export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
         <Metric val={`${alert.gap_eur.toLocaleString(undefined, {maximumFractionDigits: 0})}€`} lbl="gap" />
         <Metric val={`${alert.dies_sense_compra}d`} lbl="sense compra" />
         <Metric val={alert.cicle_mig_dies ? `${alert.cicle_mig_dies.toFixed(0)}d` : '-'} lbl="cicle" />
-        {isGeo && alert.geo_neighbor_count !== null && alert.geo_neighbor_count !== undefined && (
-          <Metric val={String(alert.geo_neighbor_count)} lbl="veïns forts" />
-        )}
-        {isGeo && alert.geo_neighbor_avg_share !== null && alert.geo_neighbor_avg_share !== undefined && (
-          <Metric val={`${(alert.geo_neighbor_avg_share * 100).toFixed(0)}%`} lbl="share veïns" />
-        )}
-        {alert.share_velocity !== null && alert.share_velocity !== undefined && (
-          <span style={{
-            ...styles.velocityBadge,
-            color: alert.share_velocity < -5 ? '#DC2626' : alert.share_velocity > 5 ? '#059669' : '#6B7280',
-          }}>
-            {alert.share_velocity < -5 ? '↓' : alert.share_velocity > 5 ? '↑' : '→'}
-            {alert.share_velocity > 0 ? '+' : ''}{alert.share_velocity.toFixed(1)}pp
-          </span>
-        )}
       </div>
     </div>
   )
@@ -145,10 +133,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 500,
     color: '#374151',
   },
-  location: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
   shareBadge: {
     fontSize: 11,
     fontWeight: 600,
@@ -193,16 +177,6 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 24,
     paddingTop: 10,
     borderTop: '1px solid #F3F4F6',
-  },
-  velocityBadge: {
-    fontSize: 11,
-    fontWeight: 700,
-    padding: '2px 8px',
-    borderRadius: 999,
-    border: '1px solid #E5E7EB',
-    background: '#F9FAFB',
-    fontVariantNumeric: 'tabular-nums',
-    alignSelf: 'center',
   },
   metric: {
     display: 'flex',

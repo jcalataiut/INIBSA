@@ -2,6 +2,7 @@ from fastapi import APIRouter, Query
 from sqlalchemy import text
 from backend.database import get_engine, ensure_cache
 from backend.config import today_str
+from backend.models.schemas import StatsOut
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
 

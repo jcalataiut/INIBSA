@@ -41,6 +41,7 @@ export default function App() {
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState<'briefing' | 'fugats' | 'tractades'>('briefing')
   const [selectedAlert, setSelectedAlert] = useState<Alerta | null>(null)
+  const [familiaFilter, setFamiliaFilter] = useState<'commodities' | 'technicals'>('commodities')
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -92,11 +93,17 @@ export default function App() {
   }
 
   const fugats = alerts.filter(a => a.tipus_alerta === 'fugat')
-  const actives = alerts.filter(
-    a => a.tipus_alerta === 'anticipacio' || a.tipus_alerta === 'reactiva' || a.tipus_alerta === 'geografica',
+  const actives = alerts.filter(a =>
+    a.tipus_alerta !== 'fugat'
   )
-  const tractades = actives.filter(a => a.tractada)
-  const pendents = actives.filter(a => !a.tractada)
+  const filteredActives = familiaFilter === 'commodities'
+    ? actives.filter(a => a.familia_potencial !== 'Biomateriales')
+    : actives.filter(a => a.familia_potencial === 'Biomateriales')
+  const filteredFugats = familiaFilter === 'commodities'
+    ? fugats.filter(a => a.familia_potencial !== 'Biomateriales')
+    : fugats.filter(a => a.familia_potencial === 'Biomateriales')
+  const tractades = filteredActives.filter(a => a.tractada)
+  const pendents = filteredActives.filter(a => !a.tractada)
 
   const today = new Date()
 
@@ -106,6 +113,16 @@ export default function App() {
       <div style={styles.content}>
         <div style={styles.headerSection}>
           <h1 style={styles.title}>{TITLE[activeTab]}</h1>
+          <div style={styles.toggle}>
+            <button
+              style={{ ...styles.toggleBtn, ...(familiaFilter === 'commodities' ? styles.toggleActive : {}) }}
+              onClick={() => setFamiliaFilter('commodities')}
+            >Commodities</button>
+            <button
+              style={{ ...styles.toggleBtn, ...(familiaFilter === 'technicals' ? styles.toggleActive : {}) }}
+              onClick={() => setFamiliaFilter('technicals')}
+            >Tècnics</button>
+          </div>
         </div>
         <p style={styles.dateSub}>{formatDate(today)}</p>
 
@@ -127,7 +144,7 @@ export default function App() {
               <AlertList alerts={tractades} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} listLabel="tractades" />
             )}
             {activeTab === 'fugats' && (
-              <FugatsTab alerts={fugats} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} />
+              <FugatsTab alerts={filteredFugats} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} />
             )}
           </>
         )}
@@ -190,5 +207,24 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 15,
     color: '#6B7280',
     fontWeight: 500,
+  },
+  toggle: {
+    display: 'flex',
+    gap: 0,
+  },
+  toggleBtn: {
+    background: '#FFFFFF',
+    border: '1px solid #D1D5DB',
+    color: '#6B7280',
+    fontSize: 12,
+    fontWeight: 600,
+    padding: '6px 14px',
+    cursor: 'pointer',
+    fontFamily: "'Inter', sans-serif",
+  },
+  toggleActive: {
+    background: '#111827',
+    border: '1px solid #111827',
+    color: '#FFFFFF',
   },
 }
