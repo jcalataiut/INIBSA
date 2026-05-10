@@ -43,12 +43,19 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
   if (historial.length > 0) {
     const dates = historial.map(h => new Date(h.fecha))
     primerDate = new Date(Math.min(...dates.map(d => d.getTime())))
-    purchases = historial.map(h => ({
-      day: Math.round((new Date(h.fecha).getTime() - primerDate!.getTime()) / 86400000),
-      date: h.fecha,
-      valor: h.valor,
-    }))
-    purchases.sort((a, b) => a.day - b.day)
+    
+    const agrupades = new Map<number, Purchase>()
+    
+    historial.forEach(h => {
+      const day = Math.round((new Date(h.fecha).getTime() - primerDate!.getTime()) / 86400000)
+      if (agrupades.has(day)) {
+        agrupades.get(day)!.valor += h.valor
+      } else {
+        agrupades.set(day, { day, date: h.fecha, valor: h.valor })
+      }
+    })
+    
+    purchases = Array.from(agrupades.values()).sort((a, b) => a.day - b.day)
     timelineDays = Math.max(...purchases.map(p => p.day), 1)
     maxValor = Math.max(...purchases.map(p => p.valor), 1)
   }
@@ -115,35 +122,50 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
           <svg width="100%" viewBox={`0 0 ${W} ${H + 50}`} style={styles.chartSvg}>
             {/* Prediction zones */}
             <rect x={xScale(low)} y={PAD.top} width={xScale(high) - xScale(low)} height={chartH}
-              fill="rgba(0,184,169,0.10)" rx={2} />
+              fill="rgba(0,184,169,0.10)" rx={0} />
             <rect x={xScale(high)} y={PAD.top} width={xScale(riskHigh) - xScale(high)} height={chartH}
-              fill="rgba(231,76,60,0.08)" rx={2} />
+              fill="rgba(231,76,60,0.08)" rx={0} />
             <line x1={xScale(properDay)} y1={PAD.top} x2={xScale(properDay)} y2={PAD.top + chartH}
               stroke="#00B8A9" strokeWidth={1} strokeDasharray="4,3" opacity={0.5} />
 
             {/* Purchase bars */}
-            {purchases.map((p, i) => {
-              const prevP = i > 0 ? purchases[i - 1] : null
-              const isOverlap = prevP && (xScale(p.day) - xScale(prevP.day)) < 20
-              const labelYOffset = isOverlap && i % 2 !== 0 ? 18 : 6
-              const isFuture = p.day > hojeDay
+            {(() => {
+              // Donem prioritat a mostrar els imports de les compres més recents
+              const visibility = new Array(purchases.length).fill(false);
+              let lastLabelX = Infinity;
+              for (let i = purchases.length - 1; i >= 0; i--) {
+                const p = purchases[i];
+                if (p.day > hojeDay) continue;
+                
+                const currentX = xScale(p.day);
+                if (lastLabelX - currentX > 26) {
+                  visibility[i] = true;
+                  lastLabelX = currentX;
+                }
+              }
 
-              const barW = Math.max(3, chartW / xMax * 4)
-              const barH = chartH - yScale(p.valor) + PAD.top
-              return (
-                <g key={i}>
-                  <title>{p.valor.toFixed(0)}€ - día {p.day}</title>
-                  <rect x={xScale(p.day) - barW / 2} y={yScale(p.valor)} width={barW} height={barH}
-                    fill={isFuture ? '#E5E7EB' : '#1565C0'} rx={1} opacity={isFuture ? 0.3 : 0.8} />
-                  {!isFuture && (
-                    <text x={xScale(p.day)} y={yScale(p.valor) - labelYOffset} textAnchor="middle"
-                      fontSize={10} fill="#374151" fontWeight={600}>
-                      {p.valor.toFixed(0)}€
-                    </text>
-                  )}
-                </g>
-              )
-            })}
+              return purchases.map((p, i) => {
+                const currentX = xScale(p.day);
+                const isFuture = p.day > hojeDay;
+                const barW = Math.max(3, (chartW / xMax) * 4);
+                const barH = chartH - yScale(p.valor) + PAD.top;
+                const showLabel = visibility[i];
+
+                return (
+                  <g key={i}>
+                    <title>{p.valor.toFixed(0)}€ - dia {p.day}</title>
+                    <rect x={currentX - barW / 2} y={yScale(p.valor)} width={barW} height={barH}
+                      fill={isFuture ? '#E5E7EB' : '#1565C0'} rx={0} opacity={isFuture ? 0.3 : 0.8} />
+                    {showLabel && (
+                      <text x={currentX} y={yScale(p.valor) - 6} textAnchor="middle"
+                        fontSize={9} fill="#4B5563" fontWeight={600}>
+                        {p.valor.toFixed(0)}€
+                      </text>
+                    )}
+                  </g>
+                )
+              });
+            })()}
 
             {/* Today line */}
             <line x1={xScale(hojeDay)} y1={PAD.top} x2={xScale(hojeDay)} y2={PAD.top + chartH}
@@ -169,7 +191,7 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
         <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <p style={styles.motiu}>{alert.motiu}</p>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#F9FAFB', padding: '12px 16px', borderRadius: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#F9FAFB', padding: '12px 16px', borderRadius: 0, border: '1px solid #E5E7EB' }}>
             <label style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Simular Dia Avui:</label>
             <input 
               type="range" 
