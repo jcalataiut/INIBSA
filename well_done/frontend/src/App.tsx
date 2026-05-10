@@ -76,7 +76,7 @@ export default function App() {
   if (selectedAlert) {
     return (
       <div style={styles.container}>
-        <Header activeTab={activeTab} onTabChange={setActiveTab} />
+        <Header activeTab={activeTab} onTabChange={(t) => { setActiveTab(t); setSelectedAlert(null) }} />
         <div style={styles.content}>
           <AlertDetail
             alert={selectedAlert}
