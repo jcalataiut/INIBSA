@@ -86,8 +86,11 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
   const PAD = { top: 30, bottom: 40, left: 10, right: 60 }
   const chartW = W - PAD.left - PAD.right
   const chartH = H - PAD.top - PAD.bottom
-  const maxSimDay = Math.max(actualHojeDay + 60, timelineDays + 60)
-  const xMax = Math.max(maxSimDay, properDay + riskHigh * 0.5)
+  
+  // Ajustem l'escala de l'eix X perquè no s'allargui a l'infinit (evitem errors previs amb multiplicacions errònies)
+  const maxDayInData = Math.max(actualHojeDay, timelineDays, riskHigh)
+  const xMax = maxDayInData + Math.max(30, cicle * 0.4)
+  
   const xScale = (d: number) => PAD.left + (d / xMax) * chartW
   const yScale = (v: number) => PAD.top + chartH - (v / maxValor) * chartH * 0.85
 
@@ -196,7 +199,7 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
             <input 
               type="range" 
               min={0} 
-              max={maxSimDay} 
+              max={Math.max(actualHojeDay, timelineDays)} 
               value={hojeDay} 
               onChange={(e) => setSimDay(Number(e.target.value))} 
               style={{ flex: 1 }}
