@@ -21,6 +21,6 @@ MADRID_TZ = ZoneInfo("Europe/Madrid")
 def today_str() -> str:
     return datetime.now(MADRID_TZ).strftime("%Y-%m-%d")
 
-K_ANTICIPACIO_DIES = 7
+EWM_HALF_LIFE = 4.0
 PROB_ANTICIPACIO = 0.6
 PROB_REACTIVA = 0.8

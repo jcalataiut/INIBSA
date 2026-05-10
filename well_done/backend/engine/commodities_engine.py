@@ -30,7 +30,7 @@ from datetime import datetime
 from sqlalchemy import text
 from backend.database import get_engine
 from backend.config import (
-    K_ANTICIPACIO_DIES,
+    EWM_HALF_LIFE,
     PROB_ANTICIPACIO,
     PROB_REACTIVA,
 )
@@ -56,6 +56,29 @@ def load_data(today=None):
     df = df[df["es_devolucion"] == 0].copy()
     df[POTENCIAL_COL] = pd.to_numeric(df[POTENCIAL_COL], errors="coerce")
     return df
+
+
+def _ewm_stats(gaps_arr, half_life=None):
+    """Calcula cicle i std amb decaïment exponencial (EWM).
+
+    Els gaps més recents tenen més pes que els antics.
+    half_life: nombre de gaps per reduir el pes a la meitat.
+    """
+    if half_life is None:
+        half_life = EWM_HALF_LIFE
+    n = len(gaps_arr)
+    lam = np.log(2) / max(half_life, 0.1)
+    weights = np.exp(lam * np.arange(n))
+    weights /= weights.sum()
+    cicle = float(np.dot(weights, gaps_arr))
+    if n > 1:
+        variance = float(np.dot(weights, (gaps_arr - cicle) ** 2))
+        std = float(np.sqrt(variance))
+    else:
+        std = cicle * 0.30
+    if np.isnan(std) or std <= 0:
+        std = cicle * 0.30
+    return cicle, std
 
 
 def calc_restock_cycle(df):
@@ -85,9 +108,10 @@ def calc_restock_cycle(df):
             })
         else:
             diffs = np.diff(dates.astype("datetime64[D]")).astype(float)
+            cicle_ewm, cicle_ewm_std = _ewm_stats(diffs)
             records.append({
                 "id_cliente": cli, "familia_potencial": fam,
-                "cicle_mig_dies": diffs.mean(), "cicle_std_dies": diffs.std(),
+                "cicle_mig_dies": cicle_ewm, "cicle_std_dies": cicle_ewm_std,
                 "num_intervals": len(diffs),
                 "data_ultim_pedido": dates[-1],
             })
@@ -143,7 +167,6 @@ def generate_alerts(cycles, sow, today, provincia_map=None):
       - Urgència: baixa→mitjana→alta→crítica segons retard_ratio
     """
     today_ts = pd.Timestamp(today)
-    K = K_ANTICIPACIO_DIES
     alerts = []
 
     data = cycles.merge(sow, on=["id_cliente", "familia_potencial"], how="left")
@@ -160,6 +183,10 @@ def generate_alerts(cycles, sow, today, provincia_map=None):
         cicle_std = row["cicle_std_dies"] if (
             not pd.isna(row["cicle_std_dies"]) and row["cicle_std_dies"] > 0
         ) else cicle * 0.30
+
+        # Finestra d'anticipació dinàmica: proporcional a la variabilitat del client
+        # Mínim 3 dies (no pot ser 0), adaptatiu a la desviació del cicle
+        K = max(3, cicle_std * 0.5)
 
         # Predicció: proper pedido
         proper_pedido = row["data_ultim_pedido"] + pd.Timedelta(days=cicle)
