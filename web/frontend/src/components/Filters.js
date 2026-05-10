@@ -1,14 +1,13 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { useState } from 'react';
-const COMMODITIES_SEGMENTS = ['leal', 'promiscuo', 'fugat'];
-const COMMODITIES_TIPUS = ['anticipacio', 'reactiva', 'fugat', 'geographical_alert'];
-const TECHNICALS_SEGMENTS = ['actiu_regular', 'actiu_esporadic', 'inactiu_recent', 'inactiu_total', 'fugat'];
-const TECHNICALS_TIPUS = ['anomalia_groga', 'anomalia_vermella', 'monitoritzar', 'caiguda_volum', 'fugat', 'geographical_alert'];
+const COMMODITIES_SEGMENTS = ['leal', 'promiscuo'];
+const COMMODITIES_TIPUS = ['anticipacio', 'reactiva', 'geographical_alert'];
+const TECHNICALS_SEGMENTS = ['actiu_regular', 'actiu_esporadic', 'inactiu_recent', 'inactiu_total'];
+const TECHNICALS_TIPUS = ['anomalia_groga', 'anomalia_vermella', 'monitoritzar', 'caiguda_volum', 'geographical_alert'];
 const LABEL_SEG = {
     leal: 'Leal', promiscuo: 'Promiscuo',
     actiu_regular: 'Actiu Regular', actiu_esporadic: 'Actiu Esporàdic',
     inactiu_recent: 'Inactiu Recent', inactiu_total: 'Inactiu Total',
-    fugat: 'Fugat',
 };
 const URGENCIES = ['critica', 'alta', 'mitjana', 'baixa'];
 const LABEL_TIPUS = {
@@ -16,7 +15,6 @@ const LABEL_TIPUS = {
     anomalia_groga: 'Anomalia Groga', anomalia_vermella: 'Anomalia Vermella',
     monitoritzar: 'Monitoritzar',
     caiguda_volum: 'Caiguda Volum',
-    fugat: 'Fugat',
     geographical_alert: 'Alerta Geogràfica',
 };
 export default function Filters(props) {
@@ -24,12 +22,12 @@ export default function Filters(props) {
     const activeCount = props.filterSegment.length + props.filterTipus.length + props.filterUrgencia.length;
     const currentSegments = props.activeFamilia === 'commodities' ? COMMODITIES_SEGMENTS : TECHNICALS_SEGMENTS;
     const currentTipus = props.activeFamilia === 'commodities' ? COMMODITIES_TIPUS : TECHNICALS_TIPUS;
-    return (_jsxs(_Fragment, { children: [_jsxs("button", { style: styles.filterBtn, onClick: () => setOpen(true), children: [_jsx("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", children: _jsx("path", { d: "M22 3H2l8 9.46V19l4 2v-8.54L22 3z" }) }), "Filtres", activeCount > 0 && _jsx("span", { style: styles.badge, children: activeCount })] }), open && (_jsx("div", { style: styles.overlay, onClick: () => setOpen(false), children: _jsxs("div", { style: styles.modal, onClick: e => e.stopPropagation(), children: [_jsxs("div", { style: styles.modalHeader, children: [_jsx("span", { style: styles.modalTitle, children: "Filtres" }), _jsx("button", { style: styles.closeBtn, onClick: () => setOpen(false), children: "\u2715" })] }), _jsxs("div", { style: styles.section, children: [_jsx("span", { style: styles.sectionLabel, children: "Segment" }), _jsx("div", { style: styles.chips, children: currentSegments.map(s => (_jsx("button", { style: { ...styles.chip, ...(props.filterSegment.includes(s) ? styles.chipActive : {}) }, onClick: () => {
+    return (_jsxs(_Fragment, { children: [_jsxs("button", { style: styles.filterBtn, onClick: () => setOpen(true), children: [_jsx("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2.5", children: _jsx("path", { d: "M22 3H2l8 9.46V19l4 2v-8.54L22 3z" }) }), "Filtres", activeCount > 0 && _jsx("span", { style: styles.badge, children: activeCount })] }), open && (_jsx("div", { style: styles.overlay, onClick: () => setOpen(false), children: _jsxs("div", { style: styles.modal, onClick: e => e.stopPropagation(), children: [_jsxs("div", { style: styles.modalHeader, children: [_jsx("span", { style: styles.modalTitle, children: "Filtres" }), _jsx("button", { style: styles.closeBtn, onClick: () => setOpen(false), children: "\u2715" })] }), _jsxs("div", { style: styles.section, children: [_jsx("span", { style: styles.sectionLabel, children: "Segment" }), _jsx("div", { style: styles.chips, children: currentSegments.map(s => (_jsx("button", { style: { ...styles.chip, ...(props.filterSegment.includes(s) ? styles.chipActive : {}) }, onClick: () => {
                                             const next = props.filterSegment.includes(s)
                                                 ? props.filterSegment.filter(x => x !== s)
                                                 : [...props.filterSegment, s];
                                             props.onSegmentChange(next);
-                                        }, children: LABEL_SEG[s] || s }, s))) })] }), _jsxs("div", { style: styles.section, children: [_jsx("span", { style: styles.sectionLabel, children: "Tipus" }), _jsx("div", { style: styles.chips, children: currentTipus.map(t => (_jsx("button", { style: { ...styles.chip, ...(props.filterTipus.includes(t) ? styles.chipActive : {}) }, onClick: () => {
+                                        }, children: LABEL_SEG[s] || s }, s))) })] }), _jsxs("div", { style: styles.section, children: [_jsx("span", { style: styles.sectionLabel, children: "Tipus d'Alerta" }), _jsx("div", { style: styles.chips, children: currentTipus.map(t => (_jsx("button", { style: { ...styles.chip, ...(props.filterTipus.includes(t) ? styles.chipActive : {}) }, onClick: () => {
                                             const next = props.filterTipus.includes(t)
                                                 ? props.filterTipus.filter(x => x !== t)
                                                 : [...props.filterTipus, t];
@@ -39,29 +37,32 @@ export default function Filters(props) {
                                                 ? props.filterUrgencia.filter(x => x !== u)
                                                 : [...props.filterUrgencia, u];
                                             props.onUrgenciaChange(next);
-                                        }, children: u }, u))) })] }), _jsx("div", { style: styles.section, children: _jsxs("label", { style: styles.toggle, children: [_jsx("input", { type: "checkbox", checked: props.showTreated, onChange: e => props.onShowTreatedChange(e.target.checked), style: styles.checkbox }), _jsx("span", { style: styles.toggleLabel, children: "Mostrar tractades" })] }) }), _jsx("button", { style: styles.applyBtn, onClick: () => setOpen(false), children: "Aplicar" })] }) }))] }));
+                                        }, children: u }, u))) })] }), _jsx("div", { style: styles.section, children: _jsxs("label", { style: styles.toggle, children: [_jsx("input", { type: "checkbox", checked: props.showTreated, onChange: e => props.onShowTreatedChange(e.target.checked), style: styles.checkbox }), _jsx("span", { style: styles.toggleLabel, children: "Mostrar alertes tractades" })] }) }), _jsx("button", { style: styles.applyBtn, onClick: () => setOpen(false), children: "Aplicar Filtres" })] }) }))] }));
 }
 const styles = {
     filterBtn: {
         background: '#FFFFFF',
-        border: '1px solid #D1D5DB',
-        color: '#374151',
-        fontSize: 13,
-        fontWeight: 500,
-        padding: '8px 16px',
+        border: 'none',
+        color: '#007AFF',
+        fontSize: 14,
+        fontWeight: 600,
+        padding: '8px 18px',
         cursor: 'pointer',
-        fontFamily: "'Inter', sans-serif",
         display: 'inline-flex',
         alignItems: 'center',
         gap: 8,
+        borderRadius: 20,
+        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+        transition: 'all 0.2s ease',
     },
     badge: {
-        background: '#00B8A9',
+        background: '#007AFF',
         color: '#FFFFFF',
         fontSize: 10,
         fontWeight: 700,
         width: 18,
         height: 18,
+        borderRadius: '50%',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -69,96 +70,108 @@ const styles = {
     overlay: {
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.4)',
-        backdropFilter: 'blur(4px)',
+        background: 'rgba(0,0,0,0.3)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
         zIndex: 200,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        animation: 'fadeIn 0.3s ease-out',
     },
     modal: {
         background: '#FFFFFF',
         width: 440,
-        maxWidth: '90vw',
-        maxHeight: '80vh',
+        maxWidth: '94vw',
+        maxHeight: '86vh',
         overflowY: 'auto',
-        padding: 28,
+        padding: 32,
+        borderRadius: 24,
+        boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
     },
     modalHeader: {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 24,
+        marginBottom: 28,
     },
     modalTitle: {
-        fontSize: 18,
-        fontWeight: 700,
-        color: '#111827',
+        fontSize: 22,
+        fontWeight: 800,
+        color: '#000000',
+        letterSpacing: '-0.02em',
     },
     closeBtn: {
-        background: 'none',
+        background: '#F2F2F7',
         border: 'none',
-        fontSize: 20,
-        color: '#6B7280',
+        width: 32,
+        height: 32,
+        borderRadius: '50%',
+        fontSize: 14,
+        color: '#8E8E93',
         cursor: 'pointer',
-        padding: 4,
-        lineHeight: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     section: {
-        marginBottom: 20,
+        marginBottom: 28,
     },
     sectionLabel: {
         display: 'block',
-        fontSize: 10,
+        fontSize: 13,
         fontWeight: 600,
-        color: '#6B7280',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-        marginBottom: 8,
+        color: '#8E8E93',
+        marginBottom: 12,
     },
     chips: {
         display: 'flex',
-        gap: 6,
+        gap: 8,
         flexWrap: 'wrap',
     },
     chip: {
-        background: '#F9FAFB',
-        border: '1px solid #D1D5DB',
-        color: '#6B7280',
-        fontSize: 12,
+        background: '#F2F2F7',
+        border: 'none',
+        color: '#3A3A3C',
+        fontSize: 13,
         fontWeight: 500,
-        padding: '6px 14px',
+        padding: '8px 16px',
         cursor: 'pointer',
-        fontFamily: "'Inter', sans-serif",
+        borderRadius: 12,
+        transition: 'all 0.2s ease',
     },
     chipActive: {
-        background: '#00B8A9',
-        border: '1px solid #00B8A9',
+        background: '#007AFF',
         color: '#FFFFFF',
+        fontWeight: 600,
     },
     toggle: {
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
+        gap: 10,
         cursor: 'pointer',
     },
     checkbox: {
-        accentColor: '#00B8A9',
+        width: 18,
+        height: 18,
+        accentColor: '#007AFF',
     },
     toggleLabel: {
-        fontSize: 13,
-        color: '#374151',
+        fontSize: 15,
+        fontWeight: 500,
+        color: '#1C1C1E',
     },
     applyBtn: {
-        background: '#00B8A9',
+        background: '#000000',
         border: 'none',
         color: '#FFFFFF',
-        fontSize: 13,
+        fontSize: 16,
         fontWeight: 600,
-        padding: '10px 0',
+        padding: '12px 0',
         cursor: 'pointer',
-        fontFamily: "'Inter', sans-serif",
         width: '100%',
+        borderRadius: 14,
         marginTop: 8,
+        transition: 'all 0.2s ease',
     },
 };

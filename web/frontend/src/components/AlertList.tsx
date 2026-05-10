@@ -32,12 +32,27 @@ export default function AlertList({ alerts, loading, onToggleTreated, onClickAle
     )
   }
 
+  const LIMIT = 100
+  const displayedAlerts = alerts.slice(0, LIMIT)
+
   return (
     <div style={styles.listWrapper}>
-      <div style={styles.count}>{alerts.length.toLocaleString()} alertes trobades</div>
-      {alerts.map((a, i) => (
-        <AlertCard key={`${a.id_cliente}_${a.familia_potencial}_${a.tipus_alerta}_${i}`} alert={a} onToggleTreated={onToggleTreated} onClick={onClickAlert} />
+      <div style={styles.count}>
+        Mostrant {displayedAlerts.length} de {alerts.length.toLocaleString()} alertes trobades
+      </div>
+      {displayedAlerts.map((a, i) => (
+        <AlertCard 
+          key={`${a.id_cliente}_${a.familia_potencial}_${a.tipus_alerta}_${i}`} 
+          alert={a} 
+          onToggleTreated={onToggleTreated} 
+          onClick={onClickAlert} 
+        />
       ))}
+      {alerts.length > LIMIT && (
+        <div style={styles.infoBox}>
+          Refina els filtres per veure alertes més específiques (només es mostren les primeres {LIMIT}).
+        </div>
+      )}
     </div>
   )
 }
@@ -62,7 +77,7 @@ const styles: Record<string, CSSProperties> = {
     width: 28,
     height: 28,
     border: '3px solid #E5E5EA',
-    borderTop: '3px solid #007AFF',
+    borderTop: '3px solid #00B8A9',
     borderRadius: '50%',
     animation: 'spin 0.8s linear infinite',
   },
@@ -95,5 +110,18 @@ const styles: Record<string, CSSProperties> = {
     textAlign: 'center',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
+  },
+  infoBox: {
+    padding: '24px',
+    background: '#FFFFFF',
+    borderRadius: 12,
+    border: '1px dashed #CBD5E0',
+    color: '#718096',
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: 500,
+    margin: '20px auto',
+    maxWidth: 600,
+    width: '100%',
   },
 }

@@ -27,45 +27,95 @@ export default function FugatsTab({ alerts, loading, onToggleTreated, onClickAle
     )
   }
 
+  const LIMIT = 100
+  const displayedAlerts = alerts.slice(0, LIMIT)
+
   return (
-    <div>
-      <div style={styles.count}>{alerts.length.toLocaleString()} alertes</div>
-      {alerts.map((a, i) => (
-        <AlertCard key={`fugat_${a.id_cliente}_${i}`} alert={a} onToggleTreated={onToggleTreated} onClick={onClickAlert} />
+    <div style={styles.listWrapper}>
+      <div style={styles.count}>
+        Mostrant {displayedAlerts.length} de {alerts.length.toLocaleString()} clients fugats
+      </div>
+      {displayedAlerts.map((a, i) => (
+        <AlertCard 
+          key={`fugat_${a.id_cliente}_${i}`} 
+          alert={a} 
+          onToggleTreated={onToggleTreated} 
+          onClick={onClickAlert} 
+        />
       ))}
+      {alerts.length > LIMIT && (
+        <div style={styles.infoBox}>
+          Refina la cerca per veure més detalls (només es mostren els primers {LIMIT}).
+        </div>
+      )}
     </div>
   )
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  listWrapper: {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
   empty: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '80px 0',
-    gap: 16,
+    padding: '100px 0',
+    gap: 20,
   },
   spinner: {
-    width: 24,
-    height: 24,
-    border: '2px solid #E5E7EB',
-    borderTop: '2px solid #00B8A9',
+    width: 28,
+    height: 28,
+    border: '3px solid #E5E5EA',
+    borderTop: '3px solid #00B8A9',
+    borderRadius: '50%',
     animation: 'spin 0.8s linear infinite',
   },
   emptyIcon: {
-    fontSize: 32,
-    color: '#00B8A9',
+    fontSize: 48,
+    color: '#34C759',
+    background: 'rgba(52, 199, 89, 0.1)',
+    width: 80,
+    height: 80,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     fontWeight: 700,
+    marginBottom: 8,
   },
   emptyText: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: 17,
+    fontWeight: 500,
+    color: '#8E8E93',
+    textAlign: 'center',
+    maxWidth: 300,
+    lineHeight: 1.4,
   },
   count: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 600,
-    color: '#6B7280',
-    paddingBottom: 12,
+    color: '#8E8E93',
+    paddingBottom: 20,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  infoBox: {
+    padding: '24px',
+    background: '#FFFFFF',
+    borderRadius: 12,
+    border: '1px dashed #CBD5E0',
+    color: '#718096',
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: 500,
+    margin: '20px auto',
+    maxWidth: 600,
+    width: '100%',
   },
 }

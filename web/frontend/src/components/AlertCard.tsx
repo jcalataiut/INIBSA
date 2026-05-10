@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { CSSProperties } from 'react'
 import type { Alerta } from '../types'
 import ContactActions from './ContactActions'
@@ -25,7 +26,7 @@ const URGENCIA_STYLE: Record<string, string> = {
   baixa:   '#718096',
 }
 
-export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
+const AlertCard = memo(function AlertCard({ alert, onToggleTreated, onClick }: Props) {
   const isLeal = alert.segment === 'leal' || alert.segment === 'actiu_regular' || alert.share_12m >= 0.70
   const sharePct = Math.round(alert.share_12m * 100)
   const shareLabel = `${sharePct}% ${isLeal ? 'leal' : 'promiscuo'}`
@@ -82,22 +83,22 @@ export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
       </div>
     </div>
   )
-}
+})
 
 const styles: Record<string, CSSProperties> = {
   card: {
     background: '#FFFFFF',
     borderRadius: 12,
-    padding: '16px 20px',
+    padding: '20px 24px',
     marginBottom: 12,
     cursor: 'pointer',
     transition: 'all 0.2s ease',
     border: '1px solid #E2E8F0',
     display: 'flex',
     flexDirection: 'column',
-    gap: 12,
+    gap: 16,
     width: '100%',
-    maxWidth: 800,
+    maxWidth: 720,
     margin: '0 auto 12px auto',
     boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
   },
@@ -114,7 +115,7 @@ const styles: Record<string, CSSProperties> = {
   left: {
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   right: {
     display: 'flex',
@@ -122,7 +123,7 @@ const styles: Record<string, CSSProperties> = {
     gap: 12,
   },
   id: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 800,
     color: '#1A202C',
     letterSpacing: '-0.02em',
@@ -132,38 +133,38 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 18,
   },
   familia: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 600,
     color: '#4A5568',
   },
   metricsGroup: {
     display: 'flex',
-    gap: 24,
+    gap: 28,
   },
   metric: {
     display: 'flex',
     flexDirection: 'column',
   },
   mVal: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: 700,
     color: '#2D3748',
   },
   mLbl: {
-    fontSize: 9,
+    fontSize: 10,
     color: '#A0AEC0',
     fontWeight: 700,
     textTransform: 'uppercase' as const,
     letterSpacing: '0.05em',
-    marginTop: 1,
+    marginTop: 2,
   },
   badgesGroup: {
     display: 'flex',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   shareBadge: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: 800,
     padding: '3px 8px',
     borderRadius: 4,
@@ -171,20 +172,21 @@ const styles: Record<string, CSSProperties> = {
     textTransform: 'uppercase' as const,
   },
   tag: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: 800,
     color: '#FFFFFF',
-    padding: '3px 8px',
+    padding: '4px 10px',
     borderRadius: 4,
     textTransform: 'uppercase' as const,
   },
   tagOutline: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: 800,
-    padding: '3px 8px',
+    padding: '3px 10px',
     borderRadius: 4,
     textTransform: 'uppercase' as const,
     border: '1px solid',
   },
 }
 
+export default AlertCard

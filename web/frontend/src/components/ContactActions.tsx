@@ -57,7 +57,7 @@ export default function ContactActions({ alert, onToggleTreated, variant = 'comp
         onClick={handleTreat}
         className="btn-treat"
       >
-        {alert.tractada ? <UndoIcon size={isCompact ? 16 : 20} /> : <CheckIcon size={isCompact ? 16 : 20} />}
+        {alert.tractada ? <UndoIcon size={isCompact ? 18 : 20} /> : <CheckIcon size={isCompact ? 18 : 20} />}
         <span style={styles.label}>{alert.tractada ? 'Desfer' : 'Tractar'}</span>
       </button>
 
@@ -126,8 +126,8 @@ const styles: Record<string, CSSProperties> = {
     transition: 'all 0.2s ease',
   },
   treatBtnCompact: {
-    padding: '6px 14px',
-    fontSize: '13px',
+    padding: '8px 18px',
+    fontSize: '14px',
   },
   treatBtnLarge: {
     padding: '10px 24px',

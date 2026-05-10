@@ -1,10 +1,6 @@
-import { jsxs as _jsxs, jsx as _jsx, Fragment as _Fragment } from "react/jsx-runtime";
-const URG = {
-    critica: { bg: '#FEE2E2', txt: '#991B1B' },
-    alta: { bg: '#FEF3C7', txt: '#92400E' },
-    mitjana: { bg: '#DBEAFE', txt: '#1E40AF' },
-    baixa: { bg: '#F3F4F6', txt: '#4B5563' },
-};
+import { jsxs as _jsxs, jsx as _jsx } from "react/jsx-runtime";
+import { memo } from 'react';
+import ContactActions from './ContactActions';
 const TIPUS_STYLE = {
     anticipacio: { label: 'ANTICIPAT', color: '#059669' },
     reactiva: { label: 'REACTIVA', color: '#DC2626' },
@@ -14,142 +10,122 @@ const TIPUS_STYLE = {
     caiguda_volum: { label: 'VOLUM', color: '#8B5CF6' },
     monitoritzar: { label: 'MONITOR', color: '#3B82F6' },
 };
-const TECH_COLORS = {
-    actiu_regular: '#059669',
-    actiu_esporadic: '#D97706',
-    inactiu_recent: '#E74C3C',
-    inactiu_total: '#6B7280',
-    fugat: '#6B7280',
+const URGENCIA_STYLE = {
+    critica: '#DC2626',
+    alta: '#D97706',
+    mitjana: '#3B82F6',
+    baixa: '#718096',
 };
-function badgeInfo(alert) {
-    if (alert.familia_potencial === 'Biomateriales') {
-        const color = TECH_COLORS[alert.segment] || '#6B7280';
-        const label = alert.segment === 'actiu_regular' ? 'actiu'
-            : alert.segment === 'actiu_esporadic' ? 'esporàdic'
-                : alert.segment === 'inactiu_recent' ? 'inactiu'
-                    : alert.segment === 'inactiu_total' ? 'inactiu'
-                        : alert.segment;
-        return { label, color };
-    }
-    if (alert.segment === 'fugat')
-        return { label: 'fugat', color: '#6B7280' };
+const AlertCard = memo(function AlertCard({ alert, onToggleTreated, onClick }) {
     const isLeal = alert.segment === 'leal' || alert.segment === 'actiu_regular' || alert.share_12m >= 0.70;
-    return { label: isLeal ? 'leal' : 'promiscuo', color: isLeal ? '#059669' : '#D97706' };
-}
-export default function AlertCard({ alert, onToggleTreated, onClick }) {
-    const isFugat = alert.segment === 'fugat';
-    const isTechnical = alert.familia_potencial === 'Biomateriales';
-    const badge = badgeInfo(alert);
-    const ts = TIPUS_STYLE[alert.tipus_alerta] || { label: alert.tipus_alerta.replace(/_/g, ' ').toUpperCase(), color: '#6B7280' };
-    const urg = URG[alert.urgencia] || URG.baixa;
-    return (_jsxs("div", { style: styles.card, onClick: () => onClick?.(alert), children: [_jsxs("div", { style: styles.top, children: [_jsxs("div", { style: styles.left, children: [_jsxs("span", { style: styles.id, children: ["#", alert.id_cliente] }), _jsx("span", { style: styles.sep, children: "\u00B7" }), _jsx("span", { style: styles.familia, children: alert.familia_potencial }), !isFugat && (_jsxs(_Fragment, { children: [_jsx("span", { style: styles.sep, children: "\u00B7" }), _jsx("span", { style: { ...styles.shareBadge, color: badge.color, borderColor: badge.color }, children: isTechnical ? badge.label : `${(alert.share_12m * 100).toFixed(0)}% ${badge.label}` })] }))] }), _jsxs("div", { style: styles.right, children: [_jsx("span", { style: { ...styles.tag, background: ts.color }, children: ts.label }), !isFugat && (_jsx("span", { style: { ...styles.tagOutline, background: urg.bg, color: urg.txt }, children: alert.urgencia.toUpperCase() })), _jsx("button", { style: styles.btn, onClick: e => { e.stopPropagation(); onToggleTreated(alert); }, children: alert.tractada ? '↩' : '✓' })] })] }), _jsxs("div", { style: styles.bottom, children: [_jsx(Metric, { val: `${alert.gap_eur.toLocaleString(undefined, { maximumFractionDigits: 0 })}€`, lbl: "gap" }), _jsx(Metric, { val: `${alert.dies_sense_compra}d`, lbl: "sense compra" }), _jsx(Metric, { val: alert.cicle_mig_dies ? `${alert.cicle_mig_dies.toFixed(0)}d` : '-', lbl: "cicle" })] })] }));
-}
-function Metric({ val, lbl }) {
-    return (_jsxs("div", { style: styles.metric, children: [_jsx("span", { style: styles.mVal, children: val }), _jsx("span", { style: styles.mLbl, children: lbl })] }));
-}
+    const sharePct = Math.round(alert.share_12m * 100);
+    const shareLabel = `${sharePct}% ${isLeal ? 'leal' : 'promiscuo'}`;
+    const shareColor = isLeal ? '#00B8A9' : '#F4A261';
+    const typeStyle = TIPUS_STYLE[alert.tipus_alerta] || { label: alert.tipus_alerta, color: '#718096' };
+    const urgencyColor = URGENCIA_STYLE[alert.urgencia] || '#718096';
+    return (_jsxs("div", { style: styles.card, onClick: () => onClick && onClick(alert), children: [_jsxs("div", { style: styles.row, children: [_jsxs("div", { style: styles.left, children: [_jsxs("span", { style: styles.id, children: ["#", alert.id_cliente] }), _jsx("span", { style: styles.sep, children: "\u00B7" }), _jsx("span", { style: styles.familia, children: alert.familia_potencial })] }), _jsx("div", { style: styles.right, children: _jsx(ContactActions, { alert: alert, onToggleTreated: onToggleTreated, variant: "compact" }) })] }), _jsx("div", { style: styles.divider }), _jsxs("div", { style: styles.row, children: [_jsxs("div", { style: styles.metricsGroup, children: [_jsxs("div", { style: styles.metric, children: [_jsxs("span", { style: styles.mVal, children: [alert.gap_eur.toLocaleString(), "\u20AC"] }), _jsx("span", { style: styles.mLbl, children: "gap" })] }), _jsxs("div", { style: styles.metric, children: [_jsxs("span", { style: styles.mVal, children: [alert.dies_sense_compra, "d"] }), _jsx("span", { style: styles.mLbl, children: "sense compra" })] }), _jsxs("div", { style: styles.metric, children: [_jsx("span", { style: styles.mVal, children: alert.cicle_mig_dies ? `${alert.cicle_mig_dies.toFixed(0)}d` : '-' }), _jsx("span", { style: styles.mLbl, children: "cicle" })] })] }), _jsxs("div", { style: styles.badgesGroup, children: [_jsx("span", { style: { ...styles.shareBadge, color: shareColor, borderColor: shareColor }, children: shareLabel }), _jsx("div", { style: { ...styles.tag, background: typeStyle.color }, children: typeStyle.label.replace(/_/g, ' ') }), _jsx("div", { style: { ...styles.tagOutline, color: urgencyColor, borderColor: urgencyColor }, children: alert.urgencia })] })] })] }));
+});
 const styles = {
     card: {
         background: '#FFFFFF',
-        border: '1px solid #E5E7EB',
-        borderRadius: 6,
-        padding: '16px 20px',
-        marginBottom: 8,
+        borderRadius: 12,
+        padding: '20px 24px',
+        marginBottom: 12,
         cursor: 'pointer',
-        transition: 'box-shadow 0.15s ease',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        transition: 'all 0.2s ease',
+        border: '1px solid #E2E8F0',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16,
+        width: '100%',
+        maxWidth: 600,
+        margin: '0 auto 12px auto',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
     },
-    top: {
+    row: {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 10,
+    },
+    divider: {
+        height: 1,
+        background: '#F1F5F9',
+        width: '100%',
     },
     left: {
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
-        flexWrap: 'wrap',
+        gap: 10,
     },
     right: {
         display: 'flex',
         alignItems: 'center',
-        gap: 6,
-        flexShrink: 0,
+        gap: 12,
     },
     id: {
-        fontSize: 15,
-        fontWeight: 700,
-        color: '#111827',
-        fontVariantNumeric: 'tabular-nums',
+        fontSize: 20,
+        fontWeight: 800,
+        color: '#1A202C',
+        letterSpacing: '-0.02em',
     },
     sep: {
-        color: '#D1D5DB',
-        fontSize: 15,
+        color: '#CBD5E0',
+        fontSize: 18,
     },
     familia: {
-        fontSize: 14,
-        fontWeight: 500,
-        color: '#374151',
-    },
-    shareBadge: {
-        fontSize: 11,
+        fontSize: 18,
         fontWeight: 600,
-        padding: '2px 8px',
-        borderRadius: 4,
-        border: '1px solid',
-        whiteSpace: 'nowrap',
+        color: '#4A5568',
     },
-    tag: {
-        fontSize: 10,
-        fontWeight: 700,
-        color: '#FFFFFF',
-        padding: '3px 10px',
-        borderRadius: 4,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        whiteSpace: 'nowrap',
-    },
-    tagOutline: {
-        fontSize: 10,
-        fontWeight: 700,
-        padding: '3px 10px',
-        borderRadius: 4,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        whiteSpace: 'nowrap',
-    },
-    btn: {
-        background: '#111827',
-        border: 'none',
-        color: '#FFFFFF',
-        fontSize: 13,
-        fontWeight: 700,
-        padding: '6px 12px',
-        cursor: 'pointer',
-        fontFamily: "'Inter', sans-serif",
-        marginLeft: 4,
-        lineHeight: 1,
-    },
-    bottom: {
+    metricsGroup: {
         display: 'flex',
-        gap: 24,
-        paddingTop: 10,
-        borderTop: '1px solid #F3F4F6',
+        gap: 28,
     },
     metric: {
         display: 'flex',
-        alignItems: 'baseline',
-        gap: 5,
+        flexDirection: 'column',
     },
     mVal: {
-        fontSize: 14,
-        fontWeight: 600,
-        color: '#111827',
-        fontVariantNumeric: 'tabular-nums',
+        fontSize: 16,
+        fontWeight: 700,
+        color: '#2D3748',
     },
     mLbl: {
-        fontSize: 12,
-        color: '#9CA3AF',
-        fontWeight: 500,
+        fontSize: 10,
+        color: '#A0AEC0',
+        fontWeight: 700,
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        marginTop: 2,
+    },
+    badgesGroup: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+    },
+    shareBadge: {
+        fontSize: 10,
+        fontWeight: 800,
+        padding: '3px 8px',
+        borderRadius: 4,
+        border: '1px solid',
+        textTransform: 'uppercase',
+    },
+    tag: {
+        fontSize: 10,
+        fontWeight: 800,
+        color: '#FFFFFF',
+        padding: '4px 10px',
+        borderRadius: 4,
+        textTransform: 'uppercase',
+    },
+    tagOutline: {
+        fontSize: 10,
+        fontWeight: 800,
+        padding: '3px 10px',
+        borderRadius: 4,
+        textTransform: 'uppercase',
+        border: '1px solid',
     },
 };
+export default AlertCard;

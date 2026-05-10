@@ -7,37 +7,74 @@ export default function FugatsTab({ alerts, loading, onToggleTreated, onClickAle
     if (alerts.length === 0) {
         return (_jsxs("div", { style: styles.empty, children: [_jsx("span", { style: styles.emptyIcon, children: "\u2713" }), _jsx("span", { style: styles.emptyText, children: "Cap client fugat. Bona feina!" })] }));
     }
-    return (_jsxs("div", { children: [_jsxs("div", { style: styles.count, children: [alerts.length.toLocaleString(), " alertes"] }), alerts.map((a, i) => (_jsx(AlertCard, { alert: a, onToggleTreated: onToggleTreated, onClick: onClickAlert }, `fugat_${a.id_cliente}_${i}`)))] }));
+    const LIMIT = 100;
+    const displayedAlerts = alerts.slice(0, LIMIT);
+    return (_jsxs("div", { style: styles.listWrapper, children: [_jsxs("div", { style: styles.count, children: ["Mostrant ", displayedAlerts.length, " de ", alerts.length.toLocaleString(), " clients fugats"] }), displayedAlerts.map((a, i) => (_jsx(AlertCard, { alert: a, onToggleTreated: onToggleTreated, onClick: onClickAlert }, `fugat_${a.id_cliente}_${i}`))), alerts.length > LIMIT && (_jsxs("div", { style: styles.infoBox, children: ["Refina la cerca per veure m\u00E9s detalls (nom\u00E9s es mostren els primers ", LIMIT, ")."] }))] }));
 }
 const styles = {
+    listWrapper: {
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'stretch',
+    },
     empty: {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '80px 0',
-        gap: 16,
+        padding: '100px 0',
+        gap: 20,
     },
     spinner: {
-        width: 24,
-        height: 24,
-        border: '2px solid #E5E7EB',
-        borderTop: '2px solid #00B8A9',
+        width: 28,
+        height: 28,
+        border: '3px solid #E5E5EA',
+        borderTop: '3px solid #00B8A9',
+        borderRadius: '50%',
         animation: 'spin 0.8s linear infinite',
     },
     emptyIcon: {
-        fontSize: 32,
-        color: '#00B8A9',
+        fontSize: 48,
+        color: '#34C759',
+        background: 'rgba(52, 199, 89, 0.1)',
+        width: 80,
+        height: 80,
+        borderRadius: '50%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         fontWeight: 700,
+        marginBottom: 8,
     },
     emptyText: {
-        fontSize: 14,
-        color: '#6B7280',
+        fontSize: 17,
+        fontWeight: 500,
+        color: '#8E8E93',
+        textAlign: 'center',
+        maxWidth: 300,
+        lineHeight: 1.4,
     },
     count: {
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: 600,
-        color: '#6B7280',
-        paddingBottom: 12,
+        color: '#8E8E93',
+        paddingBottom: 20,
+        textAlign: 'center',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+    },
+    infoBox: {
+        padding: '24px',
+        background: '#FFFFFF',
+        borderRadius: 12,
+        border: '1px dashed #CBD5E0',
+        color: '#718096',
+        textAlign: 'center',
+        fontSize: 14,
+        fontWeight: 500,
+        margin: '20px auto',
+        maxWidth: 600,
+        width: '100%',
     },
 };

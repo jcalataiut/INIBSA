@@ -14,15 +14,17 @@ function formatDate(d) {
 }
 const globalStyles = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #F3F4F6; color: #111827; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: #F3F4F6; }
-  ::-webkit-scrollbar-thumb { background: #D1D5DB; }
-  ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+  body { 
+    background: #FFFFFF; 
+    color: #1C1C1E; 
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; 
+    -webkit-font-smoothing: antialiased;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes spin { to { transform: rotate(360deg); } }
 `;
 const TITLE = {
-    briefing: 'Briefing Diari',
+    briefing: 'Alertes del Dia',
     tractades: 'Tractades',
     fugats: 'Fugats',
     mapa: 'Mapa Geogràfic',
@@ -111,50 +113,65 @@ export default function App() {
     const tractades = actives.filter(a => a.tractada);
     const pendents = showTreated ? actives : actives.filter(a => !a.tractada);
     const today = new Date();
-    return (_jsxs("div", { style: styles.container, children: [_jsx(Header, { activeTab: activeTab, onTabChange: setActiveTab }), _jsxs("div", { style: styles.content, children: [_jsxs("div", { style: styles.headerSection, children: [_jsx("h1", { style: styles.title, children: TITLE[activeTab] }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 12 }, children: [_jsx(Filters, { activeFamilia: familiaFilter, filterSegment: filterSegment, filterTipus: filterTipus, filterUrgencia: filterUrgencia, showTreated: showTreated, onSegmentChange: setFilterSegment, onTipusChange: setFilterTipus, onUrgenciaChange: setFilterUrgencia, onShowTreatedChange: setShowTreated }), _jsxs("div", { style: styles.toggle, children: [_jsx("button", { style: { ...styles.toggleBtn, ...(familiaFilter === 'commodities' ? styles.toggleActive : {}) }, onClick: () => {
-                                                    setFamiliaFilter('commodities');
-                                                    setFilterSegment([]);
-                                                    setFilterTipus([]);
-                                                }, children: "Commodities" }), _jsx("button", { style: { ...styles.toggleBtn, ...(familiaFilter === 'technicals' ? styles.toggleActive : {}) }, onClick: () => {
-                                                    setFamiliaFilter('technicals');
-                                                    setFilterSegment([]);
-                                                    setFilterTipus([]);
-                                                }, children: "T\u00E8cnics" })] })] })] }), _jsx("p", { style: styles.dateSub, children: formatDate(today) }), _jsx("div", { style: { display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }, children: _jsx("button", { onClick: handleRefresh, style: styles.refreshBtn, title: "Recalcular alertes", children: "\u27F3 Recalcular" }) }), error ? (_jsx("div", { style: styles.loading, children: _jsx("span", { style: { ...styles.loadingText, color: '#E74C3C' }, children: error }) })) : loading ? (_jsxs("div", { style: styles.loading, children: [_jsx("div", { style: styles.spinner }), _jsx("span", { style: styles.loadingText, children: "Calculant alertes..." })] })) : (_jsxs(_Fragment, { children: [activeTab === 'briefing' && (_jsx(AlertList, { alerts: pendents, loading: false, onToggleTreated: handleToggleTreated, onClickAlert: setSelectedAlert })), activeTab === 'tractades' && (_jsx(AlertList, { alerts: tractades, loading: false, onToggleTreated: handleToggleTreated, onClickAlert: setSelectedAlert, listLabel: "tractades" })), activeTab === 'fugats' && (_jsx(FugatsTab, { alerts: fugats, loading: false, onToggleTreated: handleToggleTreated, onClickAlert: setSelectedAlert })), activeTab === 'mapa' && (_jsx(MapView, { familiaFilter: familiaFilter }))] }))] })] }));
+    return (_jsxs("div", { style: styles.container, children: [_jsx(Header, { activeTab: activeTab, onTabChange: setActiveTab }), _jsx("main", { style: styles.main, children: _jsxs("div", { style: styles.content, children: [_jsxs("div", { style: styles.topHeader, children: [_jsxs("div", { children: [_jsx("h1", { style: styles.title, children: TITLE[activeTab] }), _jsx("p", { style: styles.dateSub, children: formatDate(today) })] }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 12 }, children: [activeTab === 'briefing' && (_jsx(Filters, { activeFamilia: familiaFilter, filterSegment: filterSegment, filterTipus: filterTipus, filterUrgencia: filterUrgencia, showTreated: showTreated, onSegmentChange: setFilterSegment, onTipusChange: setFilterTipus, onUrgenciaChange: setFilterUrgencia, onShowTreatedChange: setShowTreated })), _jsx("button", { style: styles.refreshBtn, onClick: handleRefresh, children: "Recalcular dades" })] })] }), activeTab === 'briefing' && (_jsx("div", { style: styles.controlsRow, children: _jsxs("div", { style: styles.toggle, children: [_jsx("button", { style: { ...styles.toggleBtn, ...(familiaFilter === 'commodities' ? styles.toggleActive : {}) }, onClick: () => {
+                                            setFamiliaFilter('commodities');
+                                            setFilterSegment([]);
+                                            setFilterTipus([]);
+                                        }, children: "Commodities" }), _jsx("button", { style: { ...styles.toggleBtn, ...(familiaFilter === 'technicals' ? styles.toggleActive : {}) }, onClick: () => {
+                                            setFamiliaFilter('technicals');
+                                            setFilterSegment([]);
+                                            setFilterTipus([]);
+                                        }, children: "T\u00E8cnics" })] }) })), _jsx("div", { style: styles.listContainer, children: error ? (_jsx("div", { style: styles.loading, children: _jsx("span", { style: { ...styles.loadingText, color: '#E74C3C' }, children: error }) })) : loading ? (_jsxs("div", { style: styles.loading, children: [_jsx("div", { style: styles.spinner }), _jsx("span", { style: styles.loadingText, children: "Carregant Dashboard..." })] })) : (_jsxs(_Fragment, { children: [activeTab === 'briefing' && (_jsx(AlertList, { alerts: pendents, loading: false, onToggleTreated: handleToggleTreated, onClickAlert: setSelectedAlert })), activeTab === 'tractades' && (_jsx(AlertList, { alerts: tractades, loading: false, onToggleTreated: handleToggleTreated, onClickAlert: setSelectedAlert, listLabel: "tractades" })), activeTab === 'fugats' && (_jsx(FugatsTab, { alerts: fugats, loading: false, onToggleTreated: handleToggleTreated, onClickAlert: setSelectedAlert })), activeTab === 'mapa' && (_jsx(MapView, { familiaFilter: familiaFilter }))] })) })] }) })] }));
 }
 const styles = {
     container: {
-        minHeight: '100vh',
-        background: '#F3F4F6',
-        color: '#111827',
-        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+        height: '100vh',
+        background: '#F4F7F9',
+        display: 'flex',
+        overflow: 'hidden',
+    },
+    main: {
+        flex: 1,
+        overflowY: 'auto',
+        padding: '0',
         display: 'flex',
         flexDirection: 'column',
     },
     content: {
+        padding: '40px 48px',
         maxWidth: 1200,
-        width: '100%',
         margin: '0 auto',
-        padding: '0 48px 64px',
-        flex: 1,
+        width: '100%',
     },
-    headerSection: {
+    topHeader: {
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'flex-end',
-        paddingTop: 32,
+        alignItems: 'flex-start',
+        marginBottom: 40,
     },
     title: {
-        fontSize: 26,
-        fontWeight: 700,
-        color: '#111827',
+        fontSize: 28,
+        fontWeight: 800,
+        color: '#1A202C',
         margin: 0,
-        letterSpacing: -0.5,
+        letterSpacing: '-0.02em',
     },
     dateSub: {
-        fontSize: 13,
-        color: '#6B7280',
+        fontSize: 14,
+        fontWeight: 500,
+        color: '#718096',
         marginTop: 4,
+    },
+    controlsRow: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 16,
         marginBottom: 24,
+    },
+    listContainer: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
     },
     loading: {
         display: 'flex',
@@ -167,43 +184,48 @@ const styles = {
     spinner: {
         width: 32,
         height: 32,
-        border: '3px solid #E5E7EB',
+        border: '3px solid #E2E8F0',
         borderTop: '3px solid #00B8A9',
+        borderRadius: '50%',
         animation: 'spin 0.8s linear infinite',
     },
     loadingText: {
         fontSize: 15,
-        color: '#6B7280',
+        color: '#718096',
         fontWeight: 500,
     },
     toggle: {
         display: 'flex',
-        gap: 0,
+        background: '#E2E8F0',
+        padding: 3,
+        borderRadius: 8,
+        gap: 2,
     },
     toggleBtn: {
-        background: '#FFFFFF',
-        border: '1px solid #D1D5DB',
-        color: '#6B7280',
-        fontSize: 12,
-        fontWeight: 600,
-        padding: '6px 14px',
+        background: 'transparent',
+        border: 'none',
+        color: '#4A5568',
+        fontSize: 13,
+        fontWeight: 700,
+        padding: '6px 16px',
         cursor: 'pointer',
-        fontFamily: "'Inter', sans-serif",
+        borderRadius: 6,
+        transition: 'all 0.2s ease',
     },
     toggleActive: {
-        background: '#111827',
-        border: '1px solid #111827',
-        color: '#FFFFFF',
+        background: '#FFFFFF',
+        color: '#1A202C',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
     },
     refreshBtn: {
         background: '#FFFFFF',
-        border: '1px solid #D1D5DB',
-        color: '#6B7280',
-        fontSize: 16,
-        fontWeight: 600,
-        padding: '4px 10px',
+        border: '1px solid #E2E8F0',
+        color: '#4A5568',
+        fontSize: 13,
+        fontWeight: 700,
+        padding: '10px 20px',
+        borderRadius: 8,
         cursor: 'pointer',
-        fontFamily: "'Inter', sans-serif",
-        lineHeight: 1,
+        transition: 'all 0.2s ease',
     },
 };
