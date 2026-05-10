@@ -12,8 +12,6 @@ export interface Alerta {
   urgencia: string
   canal: string
   share_12m: number
-  share_velocity: number | null
-  share_alerta: string | null
   potencial_anual_eur: number
   euros_12m: number
   gap_eur: number
@@ -28,6 +26,8 @@ export interface Alerta {
   prioritat: number
   motiu: string
   data_alerta: string
+  share_velocity: number | null
+  share_alerta: string | null
   geo_neighbor_count: number | null
   geo_neighbor_avg_share: number | null
   geo_share_gap: number | null

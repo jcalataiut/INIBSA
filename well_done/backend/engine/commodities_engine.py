@@ -154,7 +154,6 @@ def calc_sow_and_gap(df, today):
 
     return sow
 
-
 def calc_share_velocity(df, today):
     """Calcula la velocitat del Share of Wallet (derivada mensual).
 
@@ -434,17 +433,16 @@ def generate_alerts(cycles, sow, today, provincia_map=None, share_vel=None):
     today_ts = pd.Timestamp(today)
     alerts = []
 
+    share_vel_map = None
+    if share_vel is not None:
+        # Expected: dict[(id_cliente:int, familia_potencial:str), share_velocity:float|None]
+        share_vel_map = share_vel
+
     data = cycles.merge(sow, on=["id_cliente", "familia_potencial"], how="left")
     data["euros_12m"] = data["euros_12m"].fillna(0)
     data["share_12m"] = data["share_12m"].fillna(0)
     data["gap_eur"] = data["gap_eur"].fillna(0)
     data["potencial_eur"] = data["potencial_eur"].fillna(0)
-
-    if share_vel is not None and len(share_vel) > 0:
-        data = data.merge(share_vel[["id_cliente", "familia_potencial", "share_velocity"]],
-                          on=["id_cliente", "familia_potencial"], how="left")
-    else:
-        data["share_velocity"] = None
 
     for _, row in data.iterrows():
         if pd.isna(row["cicle_mig_dies"]) or row["num_intervals"] < 1:
@@ -469,16 +467,21 @@ def generate_alerts(cycles, sow, today, provincia_map=None, share_vel=None):
         if dies_sense > DIES_FUGAT_THR or row["share_12m"] < 0.01:
             continue
 
-        # Base comuna de l'alerta
-        share_vel_val = row.get("share_velocity")
-        share_vel_val = round(float(share_vel_val), 2) if share_vel_val is not None and not (isinstance(share_vel_val, float) and np.isnan(share_vel_val)) else None
+        share_vel_val = None
         share_alerta = None
-        if share_vel_val is not None:
-            if share_vel_val < -5.0:
-                share_alerta = "fuga"
-            elif share_vel_val > 5.0:
-                share_alerta = "oportunitat"
+        if share_vel_map is not None:
+            key = (int(row["id_cliente"]), row["familia_potencial"])
+            share_vel_val = share_vel_map.get(key)
+            if share_vel_val is not None and not pd.isna(share_vel_val):
+                share_vel_val = float(share_vel_val)
+                if share_vel_val <= -5:
+                    share_alerta = "fuga"
+                elif share_vel_val >= 5:
+                    share_alerta = "oportunitat"
+            else:
+                share_vel_val = None
 
+        # Base comuna de l'alerta
         alert = {
             "id_cliente": int(row["id_cliente"]),
             "provincia": provincia_map.get(row["id_cliente"], "") if provincia_map else "",
@@ -705,31 +708,26 @@ def run(today=None, family=None, verbose=False):
     if verbose:
         print(f"{len(sow):,} parelles")
 
-    # ── 4. Mapa de províncies ────────────────────────────
+    # ── 4. Share velocity (derivada mensual) ─────────────
+    share_vel_df = calc_share_velocity(raw, today)
+    share_vel_map = {
+        (int(r["id_cliente"]), r["familia_potencial"]): r["share_velocity"]
+        for _, r in share_vel_df.iterrows()
+    } if not share_vel_df.empty else {}
+
+    # ── 5. Mapa de províncies ────────────────────────────
     prov_map = raw[["id_cliente", "provincia"]].drop_duplicates()
     prov_map = prov_map.groupby("id_cliente")["provincia"].first().to_dict()
-
-    # ── 5. Share velocity (Velocitat del Share of Wallet) ─
-    if verbose:
-        print("📈 Share velocity (Velocitat del Share)...", end=" ")
-    share_vel = calc_share_velocity(raw, today)
-    if verbose:
-        n_amb_vel = share_vel["share_velocity"].notna().sum()
-        print(f"{len(share_vel):,} parelles ({n_amb_vel:,} amb velocitat)")
 
     # ── 6. Generar alertes principals ────────────────────
     if verbose:
         print("🔔 Generant alertes (anticipació + reactiva)...", end=" ")
-    alerts = generate_alerts(cycles, sow, today, prov_map, share_vel)
+    alerts = generate_alerts(cycles, sow, today, prov_map, share_vel=share_vel_map)
     if verbose:
         print(f"{len(alerts):,} alertes generades")
         if len(alerts) > 0:
             for tipus, count in alerts["tipus_alerta"].value_counts().items():
                 print(f"   {tipus:>15s}: {count}")
-            share_alertes = alerts["share_alerta"].dropna().value_counts()
-            if len(share_alertes) > 0:
-                for tipus, count in share_alertes.items():
-                    print(f"   {'share_'+tipus:>15s}: {count}")
 
     # ── 7. Generar alertes geogràfiques ────────────────
     if verbose:

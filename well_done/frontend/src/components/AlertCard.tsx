@@ -62,10 +62,7 @@ export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
               {alert.urgencia.toUpperCase()}
             </span>
           )}
-          <button 
-            style={styles.btn} 
-            onClick={e => { e.stopPropagation(); onToggleTreated(alert) }}
-          >
+          <button style={styles.btn} onClick={e => { e.stopPropagation(); onToggleTreated(alert) }}>
             {alert.tractada ? '↩' : '✓'}
           </button>
         </div>
@@ -108,9 +105,12 @@ const styles: Record<string, React.CSSProperties> = {
   card: {
     background: '#FFFFFF',
     border: '1px solid #E5E7EB',
+    borderRadius: 6,
     padding: '16px 20px',
     marginBottom: 8,
     cursor: 'pointer',
+    transition: 'box-shadow 0.15s ease',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
   },
   top: {
     display: 'flex',
@@ -153,6 +153,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 11,
     fontWeight: 600,
     padding: '2px 8px',
+    borderRadius: 4,
     border: '1px solid',
     whiteSpace: 'nowrap' as const,
   },
@@ -161,6 +162,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     color: '#FFFFFF',
     padding: '3px 10px',
+    borderRadius: 4,
     textTransform: 'uppercase' as const,
     letterSpacing: 0.5,
     whiteSpace: 'nowrap' as const,
@@ -169,6 +171,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 10,
     fontWeight: 700,
     padding: '3px 10px',
+    borderRadius: 4,
     textTransform: 'uppercase' as const,
     letterSpacing: 0.5,
     whiteSpace: 'nowrap' as const,
@@ -179,7 +182,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: 700,
-    padding: '6px 16px',
+    padding: '6px 12px',
     cursor: 'pointer',
     fontFamily: "'Inter', sans-serif",
     marginLeft: 4,
@@ -190,6 +193,16 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 24,
     paddingTop: 10,
     borderTop: '1px solid #F3F4F6',
+  },
+  velocityBadge: {
+    fontSize: 11,
+    fontWeight: 700,
+    padding: '2px 8px',
+    borderRadius: 999,
+    border: '1px solid #E5E7EB',
+    background: '#F9FAFB',
+    fontVariantNumeric: 'tabular-nums',
+    alignSelf: 'center',
   },
   metric: {
     display: 'flex',
@@ -206,11 +219,5 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
     color: '#9CA3AF',
     fontWeight: 500,
-  },
-  velocityBadge: {
-    fontSize: 11,
-    fontWeight: 700,
-    fontVariantNumeric: 'tabular-nums',
-    marginLeft: 'auto' as const,
   },
 }

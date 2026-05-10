@@ -103,6 +103,8 @@ def init_db():
         conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS city VARCHAR(120)"))
         conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS latitude NUMERIC"))
         conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS longitude NUMERIC"))
+        conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS share_velocity NUMERIC"))
+        conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS share_alerta VARCHAR(20)"))
         conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS geo_neighbor_count INTEGER"))
         conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS geo_neighbor_avg_share NUMERIC"))
         conn.execute(text("ALTER TABLE alertes_cache ADD COLUMN IF NOT EXISTS geo_share_gap NUMERIC"))

@@ -15,8 +15,6 @@ class AlertaOut(BaseModel):
     urgencia: str
     canal: str
     share_12m: float
-    share_velocity: Optional[float] = None
-    share_alerta: Optional[str] = None
     potencial_anual_eur: float
     euros_12m: float
     gap_eur: float
@@ -31,6 +29,8 @@ class AlertaOut(BaseModel):
     prioritat: float
     motiu: str
     data_alerta: str
+    share_velocity: Optional[float] = None
+    share_alerta: Optional[str] = None
     geo_neighbor_count: Optional[int] = None
     geo_neighbor_avg_share: Optional[float] = None
     geo_share_gap: Optional[float] = None
