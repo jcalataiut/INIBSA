@@ -10,9 +10,10 @@ interface Props {
 }
 
 const TIPUS_STYLE: Record<string, { label: string; color: string }> = {
-  anticipacio:        { label: 'ANTICIPAT', color: '#059669' },
+  anticipacio:        { label: 'ANTICIPACIÓ', color: '#059669' },
   reactiva:           { label: 'REACTIVA',  color: '#DC2626' },
   fugat:              { label: 'FUGAT',     color: '#6B7280' },
+  geographical_alert: { label: 'ALERTA GEOGRÀFICA', color: '#3B82F6' },
 }
 
 const URGENCIA_STYLE: Record<string, string> = {
@@ -23,9 +24,9 @@ const URGENCIA_STYLE: Record<string, string> = {
 }
 
 const AlertCard = memo(function AlertCard({ alert, onToggleTreated, onClick }: Props) {
-  const isLeal = alert.segment === 'leal' || alert.segment === 'actiu_regular' || alert.share_12m >= 0.70
+  const isLeal = alert.segment === 'lleial' || alert.segment === 'actiu_regular' || alert.share_12m >= 0.70
   const sharePct = Math.round(alert.share_12m * 100)
-  const shareLabel = `${sharePct}% ${isLeal ? 'leal' : 'promiscuo'}`
+  const shareLabel = `${sharePct}% ${isLeal ? 'lleial' : 'promiscu'}`
   const shareColor = isLeal ? '#00B8A9' : '#F4A261'
 
   const typeStyle = TIPUS_STYLE[alert.tipus_alerta] || { label: alert.tipus_alerta, color: '#718096' }

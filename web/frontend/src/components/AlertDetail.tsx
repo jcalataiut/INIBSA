@@ -38,8 +38,8 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
     : alert.tipus_alerta === 'fugat' ? '#6B7280'
     : '#E5E7EB'
 
-  const isLeal = alert.segment === 'leal' || alert.segment === 'actiu_regular' || alert.share_12m >= 0.70
-  const shareLabel = isLeal ? 'leal' : 'promiscuo'
+  const isLeal = alert.segment === 'lleial' || alert.segment === 'actiu_regular' || alert.share_12m >= 0.70
+  const shareLabel = isLeal ? 'lleial' : 'promiscu'
   const shareColor = isLeal ? '#00B8A9' : '#F4A261'
 
   // ── Build purchase timeline ────────────────────────────

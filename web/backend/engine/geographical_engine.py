@@ -84,7 +84,7 @@ def run(today=None, verbose=False):
                         "id_cliente": client['id_cliente'],
                         "provincia": client['provincia'],
                         "familia_potencial": familia,
-                        "segment": "leal" if client_share >= 0.7 else "promiscuo",
+                        "segment": "lleial" if client_share >= 0.7 else "promiscu",
                         "segment_anterior": None,
                         "tipus_alerta": "geographical_alert",
                         "urgencia": "mitjana",
