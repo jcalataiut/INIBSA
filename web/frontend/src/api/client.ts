@@ -73,3 +73,20 @@ export function getMapData(today?: string): Promise<MapPoint[]> {
   const qs = today ? `?today=${today}` : ''
   return fetchJSON<MapPoint[]>(`/alerts/map${qs}`)
 }
+
+export interface ShareMonth {
+  mes: string
+  euros: number
+  rolling_12m: number
+  share: number
+  velocity: number
+}
+
+export interface ShareTrend {
+  potencial: number
+  mesos: ShareMonth[]
+}
+
+export function getShareTrend(clientId: number, familia: string): Promise<ShareTrend> {
+  return fetchJSON<ShareTrend>(`/clients/${clientId}/share/${encodeURIComponent(familia)}`)
+}

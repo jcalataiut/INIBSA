@@ -50,3 +50,60 @@ def get_client(client_id: int):
                 for r in alertes
             ] if alertes else [],
         }
+
+
+@router.get("/{client_id}/share/{familia}")
+def get_share_trend(client_id: int, familia: str):
+    """Calcula la tendència del Share of Wallet (rolling 12m) i la velocitat."""
+    engine = get_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("""
+                SELECT DATE_TRUNC('month', fecha)::date as mes,
+                       SUM(valores_h) as euros,
+                       MAX(potencial_eur_anual) as potencial
+                FROM ventas
+                WHERE id_cliente = :id
+                  AND familia_potencial = :fam
+                  AND es_commodity = true
+                GROUP BY DATE_TRUNC('month', fecha)
+                ORDER BY mes
+            """),
+            {"id": client_id, "fam": familia}
+        ).all()
+
+        if not rows or len(rows) < 2:
+            return {"mesos": [], "potencial": 0}
+
+        import pandas as pd
+        df = pd.DataFrame(rows, columns=["mes", "euros", "potencial"])
+        potencial = float(df["potencial"].max())
+        if potencial <= 0:
+            return {"mesos": [], "potencial": 0}
+
+        # Reindexar a tots els mesos del calendari
+        df["mes"] = pd.to_datetime(df["mes"])
+        df = df.set_index("mes")
+        all_months = pd.date_range(df.index.min(), df.index.max(), freq="MS")
+        df = df.reindex(all_months)
+        df["euros"] = df["euros"].fillna(0)
+
+        # Rolling 12m share
+        df["rolling_12m"] = df["euros"].rolling(12, min_periods=1).sum()
+        df["share"] = (df["rolling_12m"] / potencial).clip(0, 1)
+        df["velocity"] = df["share"].diff().fillna(0)
+        df = df.reset_index().rename(columns={"index": "mes"})
+
+        return {
+            "potencial": round(potencial, 2),
+            "mesos": [
+                {
+                    "mes": str(r["mes"].date()),
+                    "euros": round(float(r["euros"]), 2),
+                    "rolling_12m": round(float(r["rolling_12m"]), 2),
+                    "share": round(float(r["share"]), 4),
+                    "velocity": round(float(r["velocity"]), 4),
+                }
+                for _, r in df.iterrows()
+            ],
+        }

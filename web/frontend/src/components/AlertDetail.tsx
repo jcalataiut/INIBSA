@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import type { Alerta, ClientDetail } from '../types'
-import { getClient, updateFeedback, getMapData } from '../api/client'
+import { getClient, updateFeedback, getMapData, getShareTrend } from '../api/client'
+import type { ShareMonth } from '../api/client'
 import { MapContainer, TileLayer, CircleMarker, Tooltip } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { MapPoint } from '../types'
@@ -23,6 +24,8 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
   const [loading, setLoading] = useState(true)
   const [simDay, setSimDay] = useState<number | null>(null)
   const [mapPoints, setMapPoints] = useState<MapPoint[]>([])
+  const [shareTrend, setShareTrend] = useState<ShareMonth[]>([])
+  const [sharePotencial, setSharePotencial] = useState(0)
 
   useEffect(() => {
     setLoading(true)
@@ -31,7 +34,12 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
     if (alert.tipus_alerta === 'geographical_alert') {
       getMapData().then(setMapPoints).catch(console.error)
     }
-  }, [alert.id_cliente, alert.tipus_alerta])
+    if (alert.tipus_alerta === 'anticipacio' || alert.tipus_alerta === 'reactiva') {
+      getShareTrend(alert.id_cliente, alert.familia_potencial)
+        .then(d => { setShareTrend(d.mesos); setSharePotencial(d.potencial) })
+        .catch(console.error)
+    }
+  }, [alert.id_cliente, alert.tipus_alerta, alert.familia_potencial])
 
   const borderColor = alert.tipus_alerta === 'anticipacio' ? '#00B8A9'
     : alert.tipus_alerta === 'reactiva' ? '#E74C3C'
@@ -296,6 +304,86 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
             </span>
           </div>
         )}
+      {/* ── Share of Wallet Trend (anticipació + reactiva) ── */}
+        {(alert.tipus_alerta === 'anticipacio' || alert.tipus_alerta === 'reactiva') && shareTrend.length > 3 && (() => {
+          const SW = 800, SH = 250
+          const sPAD = { top: 30, right: 30, bottom: 55, left: 50 }
+          const sChartW = SW - sPAD.left - sPAD.right
+          const sChartH = (SH - sPAD.top - sPAD.bottom) * 0.55
+          const velH = (SH - sPAD.top - sPAD.bottom) * 0.35
+          const velTop = sPAD.top + sChartH + 12
+
+          const sxScale = (i: number) => sPAD.left + (i / (shareTrend.length - 1)) * sChartW
+          const syScale = (v: number) => sPAD.top + sChartH - v * sChartH
+
+          const maxVel = Math.max(...shareTrend.map(m => Math.abs(m.velocity)), 0.05)
+          const vyScale = (v: number) => velTop + velH / 2 - (v / maxVel) * (velH / 2)
+
+          const linePath = shareTrend.map((m, i) => 
+            `${i === 0 ? 'M' : 'L'}${sxScale(i).toFixed(1)},${syScale(m.share).toFixed(1)}`
+          ).join(' ')
+
+          const areaPath = linePath + 
+            ` L${sxScale(shareTrend.length - 1).toFixed(1)},${syScale(0).toFixed(1)}` +
+            ` L${sxScale(0).toFixed(1)},${syScale(0).toFixed(1)} Z`
+
+          // Show fewer tick labels to avoid clutter
+          const tickStep = Math.max(1, Math.floor(shareTrend.length / 6))
+
+          return (
+            <div style={{ marginTop: 20, background: '#FFFFFF', borderRadius: 12, border: '1px solid #E5E7EB', padding: 16 }}>
+              <h4 style={{ fontSize: 14, fontWeight: 700, color: '#374151', marginBottom: 8 }}>
+                Tendència Share of Wallet — Potencial: {sharePotencial.toLocaleString()}€/any
+              </h4>
+              <svg width="100%" viewBox={`0 0 ${SW} ${SH}`} style={{ display: 'block' }}>
+                {/* Share area + line */}
+                <path d={areaPath} fill="rgba(21, 101, 192, 0.06)" />
+                <path d={linePath} fill="none" stroke="#1565C0" strokeWidth={2} />
+                {shareTrend.map((m, i) => (
+                  <circle key={i} cx={sxScale(i)} cy={syScale(m.share)} r={2} fill="#1565C0" />
+                ))}
+                {/* 70% loyalty threshold */}
+                <line x1={sPAD.left} y1={syScale(0.7)} x2={sPAD.left + sChartW} y2={syScale(0.7)}
+                  stroke="#2E7D32" strokeDasharray="4,3" strokeWidth={1} opacity={0.5} />
+                <text x={sPAD.left + sChartW + 4} y={syScale(0.7) + 3} fontSize={8} fill="#2E7D32">70%</text>
+                {/* 30% risk threshold */}
+                <line x1={sPAD.left} y1={syScale(0.3)} x2={sPAD.left + sChartW} y2={syScale(0.3)}
+                  stroke="#C62828" strokeDasharray="4,3" strokeWidth={1} opacity={0.5} />
+                <text x={sPAD.left + sChartW + 4} y={syScale(0.3) + 3} fontSize={8} fill="#C62828">30%</text>
+                {/* Y-axis labels */}
+                {[0, 0.25, 0.5, 0.75, 1].map(v => (
+                  <text key={v} x={sPAD.left - 6} y={syScale(v) + 3} fontSize={8} fill="#9CA3AF" textAnchor="end">{(v * 100).toFixed(0)}%</text>
+                ))}
+                {/* Velocity bars */}
+                {shareTrend.map((m, i) => {
+                  const barW = Math.max(2, sChartW / shareTrend.length * 0.7)
+                  const vPP = m.velocity * 100
+                  const bH = Math.abs(vPP / (maxVel * 100)) * (velH / 2)
+                  const bY = vPP >= 0 ? vyScale(0) - bH : vyScale(0)
+                  return (
+                    <rect key={i} x={sxScale(i) - barW / 2} y={bY} width={barW} height={Math.max(bH, 0.5)}
+                      fill={vPP >= 0 ? '#2E7D32' : '#C62828'} opacity={0.6} rx={1} />
+                  )
+                })}
+                <line x1={sPAD.left} y1={vyScale(0)} x2={sPAD.left + sChartW} y2={vyScale(0)}
+                  stroke="#9CA3AF" strokeWidth={0.5} />
+                <text x={sPAD.left - 6} y={vyScale(0) + 3} fontSize={7} fill="#9CA3AF" textAnchor="end">0pp</text>
+                {/* X-axis labels */}
+                {shareTrend.map((m, i) => {
+                  if (i % tickStep !== 0 && i !== shareTrend.length - 1) return null
+                  const label = m.mes.substring(0, 7) // YYYY-MM
+                  return (
+                    <text key={i} x={sxScale(i)} y={SH - 18} fontSize={8} fill="#9CA3AF" textAnchor="end"
+                      transform={`rotate(-40, ${sxScale(i)}, ${SH - 18})`}>{label}</text>
+                  )
+                })}
+                {/* Labels */}
+                <text x={sPAD.left} y={sPAD.top - 8} fontSize={9} fill="#1565C0" fontWeight={600}>Share of Wallet (rolling 12m)</text>
+                <text x={sPAD.left} y={velTop - 4} fontSize={9} fill="#6B7280" fontWeight={600}>Velocitat (pp/mes)</text>
+              </svg>
+            </div>
+          )
+        })()}
       </div>
 
       {/* ── Metrics ──────────────────────────────────── */}
