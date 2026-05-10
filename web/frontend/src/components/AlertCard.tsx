@@ -13,10 +13,6 @@ const TIPUS_STYLE: Record<string, { label: string; color: string }> = {
   anticipacio:        { label: 'ANTICIPAT', color: '#059669' },
   reactiva:           { label: 'REACTIVA',  color: '#DC2626' },
   fugat:              { label: 'FUGAT',     color: '#6B7280' },
-  anomalia_groga:     { label: 'GROGA',     color: '#D97706' },
-  anomalia_vermella:  { label: 'VERMELLA',  color: '#DC2626' },
-  caiguda_volum:      { label: 'VOLUM',     color: '#8B5CF6' },
-  monitoritzar:       { label: 'MONITOR',   color: '#3B82F6' },
 }
 
 const URGENCIA_STYLE: Record<string, string> = {

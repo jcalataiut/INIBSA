@@ -36,9 +36,6 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
   const borderColor = alert.tipus_alerta === 'anticipacio' ? '#00B8A9'
     : alert.tipus_alerta === 'reactiva' ? '#E74C3C'
     : alert.tipus_alerta === 'fugat' ? '#6B7280'
-    : alert.tipus_alerta === 'anomalia_vermella' ? '#E74C3C'
-    : alert.tipus_alerta === 'anomalia_groga' ? '#F4A261'
-    : alert.tipus_alerta === 'monitoritzar' ? '#3B82F6'
     : '#E5E7EB'
 
   const isLeal = alert.segment === 'leal' || alert.segment === 'actiu_regular' || alert.share_12m >= 0.70

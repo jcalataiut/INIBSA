@@ -16,21 +16,13 @@ interface Props {
 const COMMODITIES_SEGMENTS = ['leal', 'promiscuo']
 const COMMODITIES_TIPUS = ['anticipacio', 'reactiva', 'geographical_alert']
 
-const TECHNICALS_SEGMENTS = ['actiu_regular', 'actiu_esporadic', 'inactiu_recent', 'inactiu_total']
-const TECHNICALS_TIPUS = ['anomalia_groga', 'anomalia_vermella', 'monitoritzar', 'caiguda_volum', 'geographical_alert']
-
 const LABEL_SEG: Record<string, string> = {
   leal: 'Leal', promiscuo: 'Promiscuo',
-  actiu_regular: 'Actiu Regular', actiu_esporadic: 'Actiu Esporàdic',
-  inactiu_recent: 'Inactiu Recent', inactiu_total: 'Inactiu Total',
 }
 const URGENCIES = ['critica', 'alta', 'mitjana', 'baixa']
 
 const LABEL_TIPUS: Record<string, string> = {
   anticipacio: 'Anticipació', reactiva: 'Reactiva',
-  anomalia_groga: 'Anomalia Groga', anomalia_vermella: 'Anomalia Vermella',
-  monitoritzar: 'Monitoritzar',
-  caiguda_volum: 'Caiguda Volum',
   geographical_alert: 'Alerta Geogràfica',
 }
 
@@ -40,8 +32,8 @@ export default function Filters(props: Props) {
   const activeCount =
     props.filterSegment.length + props.filterTipus.length + props.filterUrgencia.length
 
-  const currentSegments = props.activeFamilia === 'commodities' ? COMMODITIES_SEGMENTS : TECHNICALS_SEGMENTS
-  const currentTipus = props.activeFamilia === 'commodities' ? COMMODITIES_TIPUS : TECHNICALS_TIPUS
+  const currentSegments = COMMODITIES_SEGMENTS
+  const currentTipus = COMMODITIES_TIPUS
 
   return (
     <>
