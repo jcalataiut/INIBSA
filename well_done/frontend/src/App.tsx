@@ -122,7 +122,7 @@ export default function App() {
               <AlertList alerts={pendents} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} />
             )}
             {activeTab === 'tractades' && (
-              <AlertList alerts={tractades} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} />
+              <AlertList alerts={tractades} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} listLabel="tractades" />
             )}
             {activeTab === 'fugats' && (
               <FugatsTab alerts={fugats} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} />

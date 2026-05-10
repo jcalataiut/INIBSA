@@ -44,7 +44,7 @@ export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
         </div>
 
         <div style={styles.colMetricsSm}>
-          <span style={styles.value}>{alert.cicle_mig_dies ? alert.cicle_mig_dies.toFixed(0) : '-'}d</span>
+          <span style={styles.value}>{alert.cicle_mig_dies ? `${alert.cicle_mig_dies.toFixed(0)}d` : '-'}</span>
           <span style={styles.lbl}>cicle</span>
         </div>
 

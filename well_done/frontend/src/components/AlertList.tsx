@@ -21,8 +21,8 @@ export default function AlertList({ alerts, loading, onToggleTreated, onClickAle
 
   if (alerts.length === 0) {
     const msg = listLabel === 'tractades'
-      ? 'Cap alerta tractada'
-      : 'Totes les alertes tractades. Bona feina!'
+      ? 'No hi ha cap alerta tractada'
+      : 'No hi ha alertes pendents'
     return (
       <div style={styles.empty}>
         <span style={styles.emptyIcon}>✓</span>
