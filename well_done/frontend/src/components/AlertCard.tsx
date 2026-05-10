@@ -28,6 +28,12 @@ export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
           <span style={styles.familia}>{alert.familia_potencial}</span>
         </div>
 
+        <div style={styles.colTipus}>
+          <span style={{ ...styles.tipusTag, background: borderColor }}>
+            {alert.tipus_alerta === 'anticipacio' ? 'ANTICIPAT' : alert.tipus_alerta === 'reactiva' ? 'REACTIVA' : 'FUGAT'}
+          </span>
+        </div>
+
         <div style={styles.colShare}>
           <span style={{ ...styles.value, color: shareColor }}>{(alert.share_12m * 100).toFixed(0)}%</span>
           <span style={{ ...styles.tag, background: shareColor }}>{shareLabel}</span>
@@ -77,6 +83,11 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     overflow: 'hidden',
+  },
+  colTipus: {
+    display: 'flex',
+    alignItems: 'center',
+    marginRight: 12,
   },
   colShare: {
     flex: '0.8',
@@ -141,6 +152,16 @@ const styles: Record<string, React.CSSProperties> = {
     textTransform: 'uppercase',
     letterSpacing: 0.3,
     marginLeft: 8,
+    whiteSpace: 'nowrap' as const,
+  },
+  tipusTag: {
+    fontSize: 10,
+    fontWeight: 700,
+    color: '#FFFFFF',
+    padding: '2px 8px',
+    borderRadius: 0,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     whiteSpace: 'nowrap' as const,
   },
   treatBtn: {

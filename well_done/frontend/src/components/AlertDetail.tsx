@@ -154,11 +154,22 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
                 const barH = chartH - yScale(p.valor) + PAD.top;
                 const showLabel = visibility[i];
 
+                // Si és una compra futura (en mode simulació), marcar si encerta la predicció
+                let barColor: string, barOpacity: number;
+                if (isFuture) {
+                  const dinsFinestra = p.day >= low && p.day <= high;
+                  barColor = dinsFinestra ? '#059669' : '#DC2626';
+                  barOpacity = dinsFinestra ? 0.7 : 0.5;
+                } else {
+                  barColor = '#1565C0';
+                  barOpacity = 0.8;
+                }
+
                 return (
                   <g key={i}>
                     <title>{p.valor.toFixed(0)}€ - dia {p.day}</title>
                     <rect x={currentX - barW / 2} y={yScale(p.valor)} width={barW} height={barH}
-                      fill={isFuture ? '#E5E7EB' : '#1565C0'} rx={0} opacity={isFuture ? 0.3 : 0.8} />
+                      fill={barColor} rx={0} opacity={barOpacity} />
                     {showLabel && (
                       <text x={currentX} y={yScale(p.valor) - 6} textAnchor="middle"
                         fontSize={9} fill="#4B5563" fontWeight={600}>
@@ -170,13 +181,22 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
               });
             })()}
 
-            {/* Today line */}
-            <line x1={xScale(hojeDay)} y1={PAD.top} x2={xScale(hojeDay)} y2={PAD.top + chartH}
-              stroke="#111827" strokeWidth={2.5} />
-            <text x={xScale(hojeDay)} y={PAD.top - 10} textAnchor="middle"
-              fontSize={10} fontWeight={700} fill="#111827">
-              {simDay !== null ? 'AVUI (SIM)' : 'AVUI'}
-            </text>
+            {/* Today line — color segons on cau respecte a la predicció */}
+            {(() => {
+              const hojeDinsVerd = hojeDay >= low && hojeDay <= high
+              const hojeDinsVermell = hojeDay > high && hojeDay <= riskHigh
+              const hojePassat = hojeDay > riskHigh
+              const hojeColor = hojePassat ? '#DC2626' : hojeDinsVermell ? '#F59E0B' : hojeDinsVerd ? '#059669' : '#111827'
+              const hojeLabel = hojePassat ? 'RETARD' : hojeDinsVermell ? 'ALERTA' : hojeDinsVerd ? 'FINESTRA' : 'AVUI'
+              return <>
+                <line x1={xScale(hojeDay)} y1={PAD.top} x2={xScale(hojeDay)} y2={PAD.top + chartH}
+                  stroke={hojeColor} strokeWidth={2.5} />
+                <text x={xScale(hojeDay)} y={PAD.top - 10} textAnchor="middle"
+                  fontSize={10} fontWeight={700} fill={hojeColor}>
+                  {simDay !== null ? hojeLabel.replace('AVUI', 'SIM') : hojeLabel}
+                </text>
+              </>
+            })()}
 
             {/* Baseline */}
             <line x1={PAD.left} y1={PAD.top + chartH} x2={PAD.left + chartW} y2={PAD.top + chartH}
