@@ -10,63 +10,79 @@
   $ xcode-select --install
   $ pip install watchdog
             
-/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:175: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
+/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:191: UserWarning: Glyph 128302 (\N{CRYSTAL BALL}) missing from font(s) DejaVu Sans.
   plt.tight_layout()
-/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:175: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
-  plt.tight_layout()
-/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:175: UserWarning: Glyph 128993 (\N{LARGE YELLOW CIRCLE}) missing from font(s) DejaVu Sans.
+/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 128302 (\N{CRYSTAL BALL}) missing from font(s) DejaVu Sans.
+  fig.savefig(image, **kwargs)
+/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:191: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
   plt.tight_layout()
 /opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
   fig.savefig(image, **kwargs)
-/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
-  fig.savefig(image, **kwargs)
-/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 128993 (\N{LARGE YELLOW CIRCLE}) missing from font(s) DejaVu Sans.
-  fig.savefig(image, **kwargs)
-/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:175: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
-  plt.tight_layout()
-/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:175: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
-  plt.tight_layout()
-/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:175: UserWarning: Glyph 128993 (\N{LARGE YELLOW CIRCLE}) missing from font(s) DejaVu Sans.
+/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:191: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
   plt.tight_layout()
 /opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
   fig.savefig(image, **kwargs)
-/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
-  fig.savefig(image, **kwargs)
-/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 128993 (\N{LARGE YELLOW CIRCLE}) missing from font(s) DejaVu Sans.
-  fig.savefig(image, **kwargs)
-/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:175: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
-  plt.tight_layout()
-/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:175: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
-  plt.tight_layout()
-/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:175: UserWarning: Glyph 128993 (\N{LARGE YELLOW CIRCLE}) missing from font(s) DejaVu Sans.
+/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:191: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
   plt.tight_layout()
 /opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
   fig.savefig(image, **kwargs)
-/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
-  fig.savefig(image, **kwargs)
-/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 128993 (\N{LARGE YELLOW CIRCLE}) missing from font(s) DejaVu Sans.
-  fig.savefig(image, **kwargs)
-/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:175: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
-  plt.tight_layout()
-/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:175: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
-  plt.tight_layout()
-/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:175: UserWarning: Glyph 128993 (\N{LARGE YELLOW CIRCLE}) missing from font(s) DejaVu Sans.
-  plt.tight_layout()
-/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
-  fig.savefig(image, **kwargs)
-/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
-  fig.savefig(image, **kwargs)
-/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 128993 (\N{LARGE YELLOW CIRCLE}) missing from font(s) DejaVu Sans.
-  fig.savefig(image, **kwargs)
-/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:175: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
-  plt.tight_layout()
-/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:175: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
-  plt.tight_layout()
-/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:175: UserWarning: Glyph 128993 (\N{LARGE YELLOW CIRCLE}) missing from font(s) DejaVu Sans.
+/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:191: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
   plt.tight_layout()
 /opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
   fig.savefig(image, **kwargs)
+/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:191: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
+  fig.savefig(image, **kwargs)
+/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:191: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
+  fig.savefig(image, **kwargs)
+/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:191: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
+  fig.savefig(image, **kwargs)
+/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:191: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
 /opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
   fig.savefig(image, **kwargs)
-/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 128993 (\N{LARGE YELLOW CIRCLE}) missing from font(s) DejaVu Sans.
+/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:191: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
+  fig.savefig(image, **kwargs)
+/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:191: UserWarning: Glyph 128302 (\N{CRYSTAL BALL}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 128302 (\N{CRYSTAL BALL}) missing from font(s) DejaVu Sans.
+  fig.savefig(image, **kwargs)
+/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:191: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
+  fig.savefig(image, **kwargs)
+/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:191: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
+  fig.savefig(image, **kwargs)
+/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:191: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
+  fig.savefig(image, **kwargs)
+/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:191: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
+  fig.savefig(image, **kwargs)
+/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:191: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
+  fig.savefig(image, **kwargs)
+/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:191: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 10060 (\N{CROSS MARK}) missing from font(s) DejaVu Sans.
+  fig.savefig(image, **kwargs)
+/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:191: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
+  fig.savefig(image, **kwargs)
+/Users/joelsanfeliu/Downloads/INIBSA/lightgbm_poc/streamlit_briefing.py:191: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
+  plt.tight_layout()
+/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/streamlit/elements/pyplot.py:225: UserWarning: Glyph 9989 (\N{WHITE HEAVY CHECK MARK}) missing from font(s) DejaVu Sans.
   fig.savefig(image, **kwargs)
