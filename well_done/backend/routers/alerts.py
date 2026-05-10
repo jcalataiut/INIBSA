@@ -87,8 +87,6 @@ def get_alerts(
             prioritat=float(v(row["prioritat"], 0)),
             motiu=v(row["motiu"]) or "",
             data_alerta=str(row["data_alerta"]),
-            share_velocity=float(v(row["share_velocity"])) if v(row["share_velocity"]) is not None else None,
-            share_alerta=v(row["share_alerta"]),
             tractada=key in treated_set,
         )
         alerts.append(alert)

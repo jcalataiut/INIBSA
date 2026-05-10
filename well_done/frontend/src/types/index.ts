@@ -8,8 +8,6 @@ export interface Alerta {
   urgencia: string
   canal: string
   share_12m: number
-  share_velocity: number | null
-  share_alerta: string | null
   potencial_anual_eur: number
   euros_12m: number
   gap_eur: number
