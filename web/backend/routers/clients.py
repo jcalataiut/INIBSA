@@ -20,7 +20,7 @@ def get_client(client_id: int):
             text("""
                 SELECT fecha, num_fact, familia_potencial, valores_h, unidades
                 FROM ventas WHERE id_cliente = :id AND es_devolucion = false
-                ORDER BY fecha DESC LIMIT 100
+                ORDER BY fecha DESC LIMIT 1000
             """),
             {"id": client_id}
         ).all()
