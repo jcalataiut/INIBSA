@@ -38,9 +38,10 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
     : alert.tipus_alerta === 'fugat' ? '#6B7280'
     : '#E5E7EB'
 
-  const isLeal = alert.segment === 'lleial' || alert.segment === 'actiu_regular' || alert.share_12m >= 0.70
-  const shareLabel = isLeal ? 'lleial' : 'promiscu'
-  const shareColor = isLeal ? '#00B8A9' : '#F4A261'
+  const isLeal = alert.segment === 'lleial' || alert.share_12m >= 0.70
+  const isFuga = alert.segment === 'fuga' || (alert.share_12m > 0 && alert.share_12m < 0.30)
+  const shareLabel = isLeal ? 'lleial' : (isFuga ? 'fuga' : 'promiscu')
+  const shareColor = isLeal ? '#00B8A9' : (isFuga ? '#E74C3C' : '#F4A261')
 
   // ── Build purchase timeline ────────────────────────────
   const historial = data?.historial?.filter(h => h.familia === alert.familia_potencial).reverse() || []

@@ -55,8 +55,9 @@ export interface FeedbackStats {
 }
 
 export const SEGMENT_COLORS: Record<string, string> = {
-  leal: '#00B8A9',
-  promiscuo: '#F4A261',
+  lleial: '#00B8A9',
+  promiscu: '#F4A261',
+  fuga: '#E74C3C',
   fugat: '#6B7280',
 }
 

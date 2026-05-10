@@ -13,11 +13,11 @@ interface Props {
   onShowTreatedChange: (v: boolean) => void
 }
 
-const COMMODITIES_SEGMENTS = ['lleial', 'promiscu']
+const COMMODITIES_SEGMENTS = ['lleial', 'promiscu', 'fuga']
 const COMMODITIES_TIPUS = ['anticipacio', 'reactiva', 'geographical_alert']
 
 const LABEL_SEG: Record<string, string> = {
-  lleial: 'Lleial', promiscu: 'Promiscu',
+  lleial: 'Lleial', promiscu: 'Promiscu', fuga: 'Fuga'
 }
 const URGENCIES = ['critica', 'alta', 'mitjana', 'baixa']
 

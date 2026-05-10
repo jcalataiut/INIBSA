@@ -24,10 +24,11 @@ const URGENCIA_STYLE: Record<string, string> = {
 }
 
 const AlertCard = memo(function AlertCard({ alert, onToggleTreated, onClick }: Props) {
-  const isLeal = alert.segment === 'lleial' || alert.segment === 'actiu_regular' || alert.share_12m >= 0.70
+  const isLeal = alert.segment === 'lleial' || alert.share_12m >= 0.70
+  const isFuga = alert.segment === 'fuga' || (alert.share_12m > 0 && alert.share_12m < 0.30)
   const sharePct = Math.round(alert.share_12m * 100)
-  const shareLabel = `${sharePct}% ${isLeal ? 'lleial' : 'promiscu'}`
-  const shareColor = isLeal ? '#00B8A9' : '#F4A261'
+  const shareLabel = `${sharePct}% ${isLeal ? 'lleial' : (isFuga ? 'fuga' : 'promiscu')}`
+  const shareColor = isLeal ? '#00B8A9' : (isFuga ? '#E74C3C' : '#F4A261')
 
   const typeStyle = TIPUS_STYLE[alert.tipus_alerta] || { label: alert.tipus_alerta, color: '#718096' }
   const urgencyColor = URGENCIA_STYLE[alert.urgencia] || '#718096'
