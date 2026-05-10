@@ -28,38 +28,9 @@ Dissenyar una solució analítica que cada dia generi una **llista prioritzada d
 
 ---
 
-## 2. Dos blocs analítics ben diferenciats
+## 2. Datasets disponibles
 
-El negoci té dues dinàmiques de compra radicalment diferents que **requereixen motors analítics separats**.
-
-### Bloc A — Commodities (Anestèsia + Bioseguretat)
-
-Productes de consum **recurrent i predecible**. Tota clínica dental, independentment de la seva especialitat, consumeix anestèsia local i material de bioseguretat (agulles, desinfectants) de forma regular, com si fos paper d'impressora.
-
-El repte aquí no és "si comprarà" sinó **"quan comprarà i a qui"**. Una clínica pot repartir la compra entre Inibsa i la competència (client promiscu), pot concentrar-la tota amb Inibsa (client fidel), o pot tenir un volum de compra molt per sota del seu potencial estimat (demanda no capturada).
-
-Les preguntes clau:
-- Quin % del wallet d'aquesta clínica estem capturant?
-- Quan toca el proper pedido? (cicle de reposició)
-- La tendència de compra és estable, creixent o decreixent?
-- Hi ha una finestra d'oportunitat per capturar demanda que avui va a la competència?
-
-### Bloc B — Productes Tècnics (Biomaterials)
-
-Productes de compra **irregular i dependent del cas clínic**. Un implantòleg o cirurgià oral utilitza biomaterials (membranes de col·lagen, materials de regeneració òssia) quan té un cas que ho requereix. No és un consum setmanal, pot ser mensual, bimensual, o fins i tot trimestral depenent de l'agenda de la clínica.
-
-Aquí el risc no és predictible per cicle sinó per **desviació del patró individual**. Si un client que historicament demanava cada 6 setmanes porta 14 setmanes sense demanar, alguna cosa ha canviat: potser ha reduït activitat, potser ha canviat de proveïdor.
-
-Les preguntes clau:
-- Quin és el patró de compra "normal" d'aquest client concret?
-- El silenci actual és compatible amb la seva variabilitat natural, o és una senyal d'alarma?
-- Quan va ser l'últim pedido i quant temps fa en relació al seu cicle habitual?
-
----
-
-## 3. Datasets disponibles
-
-### 3.1 `Ventas.csv` — 162.546 línies de venda (2021–2025)
+### 2.1 `Ventas.csv` — 162.546 línies de venda (2021–2025)
 
 **El dataset central.** Cada fila és una línia d'una factura: un producte venut a una clínica en una data concreta.
 
@@ -78,7 +49,7 @@ Les preguntes clau:
 
 ---
 
-### 3.2 `Productos.csv` — Catàleg de 25 productes
+### 2.2 `Productos.csv` — Catàleg de 25 productes
 
 Taula de dimensió petita però estratègicament crítica: és la que permet separar els dos blocs analítics.
 
@@ -100,7 +71,7 @@ Taula de dimensió petita però estratègicament crítica: és la que permet sep
 
 ---
 
-### 3.3 `Clientes.csv` — Maestro de 11.031 clíniques
+### 2.3 `Clientes.csv` — Maestro de 11.031 clíniques
 
 | Columna | Tipus | Descripció |
 |---|---|---|
@@ -114,7 +85,7 @@ Taula de dimensió petita però estratègicament crítica: és la que permet sep
 
 ---
 
-### 3.4 `Potencial.csv` — 33.093 files · **El dataset més valuós per al repte**
+### 2.4 `Potencial.csv` — 33.093 files · **El dataset més valuós per al repte**
 
 Conté l'estimació del **gasto anual potencial** de cada clínica en cada família de producte. Probablement calculat per Inibsa a partir de factors com nombre de cadires, tipus de clínica, zona geogràfica i benchmarks del sector.
 
@@ -143,7 +114,7 @@ Si una clínica té potencial de 4.000€/any en anestèsia i ens ha comprat 700
 
 ---
 
-### 3.5 `Campañas.csv` — 10 campanyes promocionals (2021–2025)
+### 2.5 `Campañas.csv` — 10 campanyes promocionals (2021–2025)
 
 | Columna | Descripció |
 |---|---|
@@ -170,7 +141,7 @@ Les 10 campanyes registrades:
 
 ---
 
-## 4. Master datasets (`master_commodities.csv` + `master_technicals.csv`)
+## 3. Master datasets
 
 El pipeline `build_dataset.py` unifica tots els datasets i separa per bloc analític:
 - **`data/master_commodities.csv`** — productes de consum recurrent (Anestèsia + Bioseguretat)
@@ -220,7 +191,7 @@ dia_anyo          # Dia de l'any (1-365)
 ```python
 import pandas as pd
 
-df = pd.read_csv('data/master_commodities.csv')
+df = pd.read_csv('data_science/data/master_commodities.csv')
 
 # Eliminar IDs i data raw
 X = df.drop(columns=['Num.Fact', 'Fecha', 'Id_Cliente', 'Id_Producto'])
@@ -228,9 +199,9 @@ X = df.drop(columns=['Num.Fact', 'Fecha', 'Id_Cliente', 'Id_Producto'])
 
 ---
 
-## 5. Lògica analítica proposada
+## 4. Lògica analítica proposada
 
-### 5.1 Mètrica base: agregació mensual per (client, família)
+### 4.1 Mètrica base: agregació mensual per (client, família)
 
 Tota l'analítica s'ha de construir sobre una vista agregada:
 
@@ -241,7 +212,7 @@ per cada (Id_Cliente, Familia_Potencial, any-mes):
     - unitats = sum(Unidades)
 ```
 
-### 5.2 Motor Commodities — Segmentació i cicle de reposició
+### 4.2 Motor Commodities — Segmentació i cicle de reposició
 
 **Step 1: Calcular share of wallet per client-família**
 ```
@@ -271,7 +242,7 @@ próxim_pedido_esperat = data_últim_pedido + cicle_mig_dies
 - Si avui > `próxim_pedido_esperat + 1.5 * desviació_std` → **alerta de risc de fuga**
 - Si client és promiscu i `próxim_pedido_esperat` és avui ± 3 dies → **finestra de captura**
 
-### 5.3 Motor Tècnics — Detecció d'anomalia
+### 4.3 Motor Tècnics — Detecció d'anomalia
 
 **Step 1: Calcular patró individual**
 ```
@@ -290,7 +261,7 @@ std_freq = desviació estàndard de la freqüència
 - Silenci > `freq_mig + 2*std` → **alerta vermella** (risc real de pèrdua)
 - Per a esporàdics: llindar més permissiu (`freq_mig + 3*std`)
 
-### 5.4 Priorització d'alertes
+### 4.4 Priorització d'alertes
 
 Cada alerta porta una puntuació de prioritat:
 
@@ -303,7 +274,7 @@ On:
 - `urgència_temporal` = dies de retard / cicle_mig (quant s'ha passat del moment òptim)
 - `probabilitat_conversió` = funció del segment i historial de conversions passades
 
-### 5.5 Output d'una alerta (format mínim)
+### 4.5 Output d'una alerta (format mínim)
 
 ```json
 {
@@ -326,9 +297,9 @@ On:
 
 ---
 
-## 6. Pipeline de dades (`build_dataset.py`)
+## 5. Pipeline de dades (`data_science/build_dataset.py`)
 
-El script `build_dataset.py` executa tots els passos de neteja i unió:
+El script `data_science/build_dataset.py` executa tots els passos de neteja i unió:
 
 1. **Parseja formats numèrics** espanyols (`2.223,12` → `2223.12`)
 2. **Converteix dates** al format estàndard pandas
@@ -345,6 +316,7 @@ El script `build_dataset.py` executa tots els passos de neteja i unió:
 ### Execució
 
 ```bash
+cd data_science
 python3 build_dataset.py
 # Output: data/master_commodities.csv + data/master_technicals.csv
 ```
@@ -357,50 +329,27 @@ pip install pandas numpy
 
 ---
 
-## 7. Requisits funcionals del sistema final
-
-- **Periodicitat diària**: recalcular totes les alertes cada dia
-- **Unitat de decisió**: `(client, família, data)` — una alerta per combinació rellevant
-- **Lògica diferenciada**: dos motors separats (Commodities vs Tècnics)
-- **Alertes interpretables**: cada alerta inclou el motiu en text llegible
-- **Priorització**: ordenar per impacte econòmic × urgència
-- **Canal adaptatiu**: delegat / televenda / automatització de màrqueting (HubSpot)
-- **Arquitectura standalone**: operable sense CRM, integrable en el futur
-- **Escalabilitat geogràfica**: dissenyat per Espanya, extensible a Portugal i altres
-
----
-
-## 8. Mètriques d'èxit del sistema
-
-- **Taxa de conversió d'alertes**: % d'alertes que acaben en compra
-- **Taxa de recuperació**: % de clients en risc que recuperen el seu patró de compra
-- **Reducció de falsos positius**: alertes generades sense necessitat real
-- **Millora progressiva**: el sistema aprèn dels resultats registrant alerta → acció → resultat
-
----
-
-## 9. Estructura de fitxers del projecte
+## 6. Estructura del projecte
 
 ```text
 /
-├── README.md                                  # Aquest document
-├── build_dataset.py                           # Pipeline inicial de dades
-├── eda_dashboard.py                           # Dashboard d'Anàlisi Exploratori de Dades
-├── data_cleaning_analysis.ipynb               # Notebook de neteja i anàlisi de dades
-├── client_product_annual_behavior.ipynb       # Anàlisi de comportament anual per client
-├── data/
-│   ├── master_commodities.csv                 # Dades de productes commodity (sortida build_dataset.py)
-│   ├── master_technicals.csv                  # Dades de productes tècnics (sortida build_dataset.py)
-│   └── raw/                                   # Fitxers originals exportats
-│       ├── Datasets.xlsx - Campañas.csv
-│       ├── Datasets.xlsx - Clientes.csv
-│       ├── Datasets.xlsx - Potencial.csv
-│       ├── Datasets.xlsx - Productos.csv
-│       └── Datasets.xlsx - Ventas.csv
-├── info/                                      # Informació i documentació addicional
-└── scratch/                                   # Scripts de proves i experiments
-    ├── clean_data.py
-    ├── generate_client_nb.py
-    ├── generate_client_nb_optimized.py
-    └── generate_nb.py
+├── README.md                        # Aquest document
+├── alertas_share_wallet.ipynb       # Anàlisi de share of wallet per client
+├── smart_demand_signals.ipynb       # Notebook principal d'anàlisi i experiments
+├── data_science/                    # Pipeline de dades i datasets
+│   ├── build_dataset.py             # Pipeline de neteja i unió de dades
+│   ├── data/
+│   │   ├── master_commodities.csv   # Dades de productes commodity (sortida build_dataset.py)
+│   │   ├── master_technicals.csv    # Dades de productes tècnics (sortida build_dataset.py)
+│   │   └── raw/                     # Fitxers originals exportats
+│   │       ├── Datasets.xlsx - Campañas.csv
+│   │       ├── Datasets.xlsx - Clientes.csv
+│   │       ├── Datasets.xlsx - Potencial.csv
+│   │       ├── Datasets.xlsx - Productos.csv
+│   │       └── Datasets.xlsx - Ventas.csv
+│   └── info/                        # Documentació i referències del repte
+├── web/                             # Aplicació web (dashboard d'alertes)
+│   ├── backend/                     # API FastAPI (Python)
+│   ├── frontend/                    # Dashboard React + TypeScript (Vite)
+│   └── docker-compose.yml           # Orquestació complerta (API + DB + Frontend)
 ```
