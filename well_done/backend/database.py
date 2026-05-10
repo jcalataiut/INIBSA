@@ -151,7 +151,7 @@ def _run_engine(run_fn, today_str, label):
     return pd.DataFrame()
 
 
-def ensure_cache(today_str: str, family: str | None = None):
+def ensure_cache(today_str: str, family: str | None = None, force: bool = False):
     from backend.engine.commodities_engine import run as run_commodities
     from backend.engine.technicals_engine import run as run_technicals
 
@@ -161,8 +161,23 @@ def ensure_cache(today_str: str, family: str | None = None):
             text("SELECT COUNT(*) FROM alertes_cache WHERE data_alerta = :today"),
             {"today": today_str}
         ).scalar()
-    if cached > 0:
+    if cached > 0 and not force:
         return
+
+    # ── Carregar segments del dia anterior per segment_anterior ──
+    prev_segments: dict[tuple[int, str], str] = {}
+    with engine.connect() as conn:
+        prev_date = conn.execute(
+            text("SELECT DISTINCT data_alerta FROM alertes_cache ORDER BY data_alerta DESC LIMIT 1")
+        ).scalar()
+        if prev_date is not None:
+            rows = conn.execute(
+                text("SELECT id_cliente, familia_potencial, segment FROM alertes_cache WHERE data_alerta = :date"),
+                {"date": prev_date}
+            ).all()
+            for r in rows:
+                prev_segments[(int(r[0]), str(r[1]))] = str(r[2])
+
     clear_cache(today_str)
 
     # Executar ambdós motors
@@ -173,6 +188,16 @@ def ensure_cache(today_str: str, family: str | None = None):
     alerts_df = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
     if alerts_df.empty:
         return
+
+    # ── Poblar segment_anterior ──────────────────────────────
+    if prev_segments:
+        def _lookup_anterior(row):
+            key = (int(row["id_cliente"]), str(row["familia_potencial"]))
+            old = prev_segments.get(key)
+            if old is not None and old != row.get("segment"):
+                return old
+            return None
+        alerts_df["segment_anterior"] = alerts_df.apply(_lookup_anterior, axis=1)
 
     alerts_df = alerts_df.replace({np.nan: None})
     for c in COLS_CACHE:

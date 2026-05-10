@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { Alerta } from './types'
-import { getAlerts, markTreated, unmarkTreated, getTreated } from './api/client'
+import { getAlerts, markTreated, unmarkTreated, getTreated, refreshCache } from './api/client'
 import Header from './components/Header'
 import AlertList from './components/AlertList'
 import AlertDetail from './components/AlertDetail'
 import FugatsTab from './components/FugatsTab'
+import Filters from './components/Filters'
 
 const DIES = ['diumenge', 'dilluns', 'dimarts', 'dimecres', 'dijous', 'divendres', 'dissabte']
 const MESOS = ['gener', 'febrer', 'març', 'abril', 'maig', 'juny', 'juliol', 'agost', 'setembre', 'octubre', 'novembre', 'desembre']
@@ -43,6 +44,12 @@ export default function App() {
   const [selectedAlert, setSelectedAlert] = useState<Alerta | null>(null)
   const [familiaFilter, setFamiliaFilter] = useState<'commodities' | 'technicals'>('commodities')
 
+  // ── Filter state ────────────────────────────────────────
+  const [filterSegment, setFilterSegment] = useState<string[]>([])
+  const [filterTipus, setFilterTipus] = useState<string[]>([])
+  const [filterUrgencia, setFilterUrgencia] = useState<string[]>([])
+  const [showTreated, setShowTreated] = useState(false)
+
   const fetchData = useCallback(async () => {
     setLoading(true)
     setError('')
@@ -56,6 +63,19 @@ export default function App() {
       setLoading(false)
     }
   }, [])
+
+  const handleRefresh = useCallback(async () => {
+    setLoading(true)
+    try {
+      await refreshCache()
+      await fetchData()
+    } catch (e) {
+      console.error('Error refreshing cache', e)
+      setError('Error en refrescar cache')
+    } finally {
+      setLoading(false)
+    }
+  }, [fetchData])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -92,18 +112,19 @@ export default function App() {
     )
   }
 
-  const fugats = alerts.filter(a => a.tipus_alerta === 'fugat')
-  const actives = alerts.filter(a =>
-    a.tipus_alerta !== 'fugat'
-  )
-  const filteredActives = familiaFilter === 'commodities'
-    ? actives.filter(a => a.familia_potencial !== 'Biomateriales')
-    : actives.filter(a => a.familia_potencial === 'Biomateriales')
-  const filteredFugats = familiaFilter === 'commodities'
-    ? fugats.filter(a => a.familia_potencial !== 'Biomateriales')
-    : fugats.filter(a => a.familia_potencial === 'Biomateriales')
-  const tractades = filteredActives.filter(a => a.tractada)
-  const pendents = filteredActives.filter(a => !a.tractada)
+  // ── Client-side filtering ──────────────────────────────
+  const filteredAlerts = alerts.filter(a => {
+    if (filterSegment.length > 0 && !filterSegment.includes(a.segment)) return false
+    if (filterTipus.length > 0 && !filterTipus.includes(a.tipus_alerta)) return false
+    if (filterUrgencia.length > 0 && !filterUrgencia.includes(a.urgencia)) return false
+    return familiaFilter === 'commodities'
+      ? a.familia_potencial !== 'Biomateriales'
+      : a.familia_potencial === 'Biomateriales'
+  })
+  const fugats = filteredAlerts.filter(a => a.tipus_alerta === 'fugat')
+  const actives = filteredAlerts.filter(a => a.tipus_alerta !== 'fugat')
+  const tractades = actives.filter(a => a.tractada)
+  const pendents = showTreated ? actives : actives.filter(a => !a.tractada)
 
   const today = new Date()
 
@@ -113,18 +134,37 @@ export default function App() {
       <div style={styles.content}>
         <div style={styles.headerSection}>
           <h1 style={styles.title}>{TITLE[activeTab]}</h1>
-          <div style={styles.toggle}>
-            <button
-              style={{ ...styles.toggleBtn, ...(familiaFilter === 'commodities' ? styles.toggleActive : {}) }}
-              onClick={() => setFamiliaFilter('commodities')}
-            >Commodities</button>
-            <button
-              style={{ ...styles.toggleBtn, ...(familiaFilter === 'technicals' ? styles.toggleActive : {}) }}
-              onClick={() => setFamiliaFilter('technicals')}
-            >Tècnics</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Filters
+              filterSegment={filterSegment}
+              filterTipus={filterTipus}
+              filterUrgencia={filterUrgencia}
+              showTreated={showTreated}
+              onSegmentChange={setFilterSegment}
+              onTipusChange={setFilterTipus}
+              onUrgenciaChange={setFilterUrgencia}
+              onShowTreatedChange={setShowTreated}
+            />
+            <div style={styles.toggle}>
+              <button
+                style={{ ...styles.toggleBtn, ...(familiaFilter === 'commodities' ? styles.toggleActive : {}) }}
+                onClick={() => setFamiliaFilter('commodities')}
+              >Commodities</button>
+              <button
+                style={{ ...styles.toggleBtn, ...(familiaFilter === 'technicals' ? styles.toggleActive : {}) }}
+                onClick={() => setFamiliaFilter('technicals')}
+              >Tècnics</button>
+            </div>
           </div>
         </div>
         <p style={styles.dateSub}>{formatDate(today)}</p>
+
+        {/* ── Refresh button ────────────────────────────── */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+          <button onClick={handleRefresh} style={styles.refreshBtn} title="Recalcular alertes">
+            ⟳ Recalcular
+          </button>
+        </div>
 
         {error ? (
           <div style={styles.loading}>
@@ -144,7 +184,7 @@ export default function App() {
               <AlertList alerts={tractades} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} listLabel="tractades" />
             )}
             {activeTab === 'fugats' && (
-              <FugatsTab alerts={filteredFugats} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} />
+              <FugatsTab alerts={fugats} loading={false} onToggleTreated={handleToggleTreated} onClickAlert={setSelectedAlert} />
             )}
           </>
         )}
@@ -226,5 +266,17 @@ const styles: Record<string, React.CSSProperties> = {
     background: '#111827',
     border: '1px solid #111827',
     color: '#FFFFFF',
+  },
+
+  refreshBtn: {
+    background: '#FFFFFF',
+    border: '1px solid #D1D5DB',
+    color: '#6B7280',
+    fontSize: 16,
+    fontWeight: 600,
+    padding: '4px 10px',
+    cursor: 'pointer',
+    fontFamily: "'Inter', sans-serif",
+    lineHeight: 1,
   },
 }

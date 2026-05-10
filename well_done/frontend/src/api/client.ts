@@ -53,3 +53,7 @@ export function unmarkTreated(id: number): Promise<{ status: string }> {
 export function getClient(id: number): Promise<ClientDetail> {
   return fetchJSON<ClientDetail>(`/clients/${id}`)
 }
+
+export function refreshCache(): Promise<{ status: string; today: string }> {
+  return fetchJSON('/refresh', { method: 'POST' })
+}

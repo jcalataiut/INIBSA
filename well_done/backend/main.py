@@ -31,3 +31,12 @@ def startup():
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+@app.post("/api/refresh")
+def refresh():
+    from backend.database import clear_cache, ensure_cache
+    from backend.config import today_str
+    today = today_str()
+    clear_cache(today)
+    ensure_cache(today, force=True)
+    return {"status": "refreshed", "today": today}

@@ -131,7 +131,7 @@ def calc_sow_and_gap(df, today):
     cutoff = today_ts - pd.DateOffset(months=12)
 
     # (client, família) + potencial
-    client_data = df[["id_cliente", "familia_potencial", POTENCIAL_COL]].drop_duplicates()
+    client_data = df[["id_cliente", "familia_potencial", POTENCIAL_COL]].drop_duplicates(subset=["id_cliente", "familia_potencial"], keep="first")
 
     # Vendes dels últims 12 mesos (sense devolucions)
     valid = df[(df["fecha"] >= cutoff) & (df["es_devolucion"] == 0)]
