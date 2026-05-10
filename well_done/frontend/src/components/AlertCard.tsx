@@ -34,10 +34,12 @@ export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
           </span>
         </div>
 
-        <div style={styles.colShare}>
-          <span style={{ ...styles.value, color: shareColor }}>{(alert.share_12m * 100).toFixed(0)}%</span>
-          <span style={{ ...styles.tag, background: shareColor }}>{shareLabel}</span>
-        </div>
+        {!isFugat && (
+          <div style={styles.colShare}>
+            <span style={{ ...styles.value, color: shareColor }}>{(alert.share_12m * 100).toFixed(0)}%</span>
+            <span style={{ ...styles.tag, background: shareColor }}>{shareLabel}</span>
+          </div>
+        )}
 
         <div style={styles.colMetrics}>
           <span style={styles.value}>{alert.gap_eur.toLocaleString(undefined, { maximumFractionDigits: 0 })}€</span>
