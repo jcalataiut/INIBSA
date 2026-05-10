@@ -5,7 +5,7 @@ from backend.config import today_str
 from backend.routers import alerts, stats, treated, clients
 
 app = FastAPI(
-    title="Smart Demand Signals — Inibsa",
+    title="Senyals de Demanda Intel·ligents — Inibsa",
     description="API del sistema d'alertes comercials per Inibsa",
     version="2.0.0",
 )

@@ -173,7 +173,7 @@ export default function App() {
                     setFilterSegment([])
                     setFilterTipus([])
                   }}
-                >Commodities</button>
+                >Consumibles</button>
                 <button
                   style={{ ...styles.toggleBtn, ...(familiaFilter === 'technicals' ? styles.toggleActive : {}) }}
                   onClick={() => {

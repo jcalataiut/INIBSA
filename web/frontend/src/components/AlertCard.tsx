@@ -55,7 +55,7 @@ const AlertCard = memo(function AlertCard({ alert, onToggleTreated, onClick }: P
         <div style={styles.metricsGroup}>
           <div style={styles.metric}>
             <span style={styles.mVal}>{alert.gap_eur.toLocaleString()}€</span>
-            <span style={styles.mLbl}>gap</span>
+            <span style={styles.mLbl}>escletxa</span>
           </div>
           <div style={styles.metric}>
             <span style={styles.mVal}>{alert.dies_sense_compra}d</span>

@@ -329,7 +329,7 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
         </div>
         <div style={styles.metric}>
           <span style={styles.mValue}>{alert.gap_eur.toLocaleString()}€</span>
-          <span style={styles.mLabel}>gap</span>
+          <span style={styles.mLabel}>escletxa</span>
         </div>
         <div style={styles.metric}>
           <span style={styles.mValue}>{diesSenseSimulats}d</span>
