@@ -102,7 +102,11 @@ def run(today=None, verbose=False):
                         "proxim_pedido_esperat": None,
                         "dies_stock": None,
                         "prioritat": round(client['gap_eur'] * 0.4, 2),
-                        "motiu": f"Alerta Geogràfica: Aquest client té un Share of Wallet de {client_share*100:.0f}%, mentre que {len(neighbors)} veïns propers tenen una mitjana del {avg_neighbor_share*100:.0f}%. El client podria demanar més producte.",
+                        "motiu": (
+                            f"S'ha detectat una anomalia geogràfica de consum: aquest client manté un Share of Wallet del {client_share*100:.0f}%, "
+                            f"mentre que hi ha {len(neighbors)} clíniques veïnes que assoleixen una penetració mitjana del {avg_neighbor_share*100:.0f}%. "
+                            f"Aquesta diferència a la mateixa zona indica que el client està demanant producte a la competència i hi ha marge per créixer."
+                        ),
                         "data_alerta": today
                     }
                     alerts.append(alert)

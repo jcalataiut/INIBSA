@@ -233,10 +233,9 @@ def generate_alerts(cycles, sow, today, provincia_map=None):
             )
 
             alert["motiu"] = (
-                f"Client amb historial de {row['familia_potencial']}. "
-                f"Proper pedido esperat en {dies_per_proper:.0f} dies "
-                f"(cicle habitual: {cicle:.0f} dies ±{cicle_std:.0f}). "
-                f"ANTICIPACIÓ: contactar per avançar-se a la compra."
+                f"S'espera que aquest client faci una comanda de {row['familia_potencial']} d'aquí a {dies_per_proper:.0f} dies, "
+                f"seguint el seu cicle habitual de {cicle:.0f} dies (amb un marge de ±{cicle_std:.0f} dies). "
+                f"És una bona oportunitat per anticipar-se i assegurar la venda abans que busquin alternatives."
             )
             alerts.append(alert)
 
@@ -271,16 +270,12 @@ def generate_alerts(cycles, sow, today, provincia_map=None):
                 urgencia_score * 100000 + min(alert["gap_eur"], 99999), 2
             )
 
+            status = "S'ha detectat un risc elevat de pèrdua; cal una intervenció urgent per retenir el client." if retard_ratio >= 1.0 else "Es recomana contactar-hi aviat per reactivar la relació comercial."
             alert["motiu"] = (
-                f"Client de {row['familia_potencial']} que HAURIA D'HAVER COMPRAT. "
-                f"Pedido esperat fa {dies_retard:.0f} dies "
-                f"(cicle: {cicle:.0f} dies ±{cicle_std:.0f}). "
-                f"Porta {dies_sense} dies sense comprar. "
-                + (
-                    "Risc alt de pèrdua — intervenció urgent."
-                    if retard_ratio >= 1.0
-                    else "Cal reactivar contacte."
-                )
+                f"Aquest client ja hauria d'haver realitzat la seva comanda de {row['familia_potencial']}. "
+                f"Segons el seu comportament històric (cicle de {cicle:.0f} ±{cicle_std:.0f} dies), "
+                f"porta un retard de {dies_retard:.0f} dies respecte a la data prevista i acumula {dies_sense} dies sense activitat. "
+                f"{status}"
             )
             alerts.append(alert)
 
@@ -323,6 +318,7 @@ def generate_fugats(cycles, sow, today, provincia_map=None):
             not pd.isna(row["cicle_std_dies"]) and row["cicle_std_dies"] > 0
         ) else (cicle * 0.30 if cicle is not None else None)
 
+        cicle_txt = f" (el seu cicle habitual era de {cicle:.0f} dies)" if cicle is not None else ""
         alert = {
             "id_cliente": int(row["id_cliente"]),
             "provincia": provincia_map.get(row["id_cliente"], "") if provincia_map else "",
@@ -346,10 +342,9 @@ def generate_fugats(cycles, sow, today, provincia_map=None):
             "dies_stock": None,
             "prioritat": round(float(row["gap_eur"]) * 0.01, 2),
             "motiu": (
-                f"Client FUGAT de {row['familia_potencial']}. "
-                f"Porta MÉS D'UN ANY sense comprar ({dies_sense} dies). "
-                + (f"Cicle habitual era: {cicle:.0f} dies. " if cicle is not None else "")
-                + "Requereix recuperació."
+                f"El client es considera inactiu o fugat per a la família de {row['familia_potencial']}, "
+                f"ja que porta {dies_sense} dies sense registrar cap compra{cicle_txt}. "
+                f"Cal plantejar una estratègia de recuperació si s'hi detecta potencial."
             ),
             "data_alerta": today,
         }

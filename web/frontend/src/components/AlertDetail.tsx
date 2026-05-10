@@ -139,8 +139,8 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
       <button style={styles.backBtn} onClick={onBack}>← Tornar</button>
 
       {/* ── Header ──────────────────────────────────── */}
-      <div style={{ ...styles.hero, borderLeft: `4px solid ${borderColor}` }}>
-        <div style={styles.heroTop}>
+      <div style={{ ...styles.hero, borderLeft: `4px solid ${borderColor}`, padding: '24px 32px', marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <span style={styles.heroId}>#{alert.id_cliente}</span>
             <span style={styles.heroSep}>·</span>
@@ -152,6 +152,12 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
             <ContactActions alert={alert} onToggleTreated={onToggleTreated} variant="large" />
           </div>
         </div>
+      </div>
+
+      <div style={{ ...styles.hero, padding: '32px' }}>
+        <p style={{ ...styles.motiu, marginBottom: 32, fontSize: 16, fontWeight: 500, color: '#111827' }}>
+          {alert.motiu}
+        </p>
 
         {/* ── Chart OR Map ──────────────────────────────────── */}
         {alert.tipus_alerta === 'geographical_alert' ? (
@@ -293,30 +299,26 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
           </>
         )}
 
-        {/* ── Motiu i Slider ──────────────────────────────── */}
-        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <p style={styles.motiu}>{alert.motiu}</p>
-
-          {alert.tipus_alerta !== 'geographical_alert' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#F9FAFB', padding: '12px 16px', borderRadius: 0, border: '1px solid #E5E7EB' }}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Simular Dia Avui:</label>
-              <input 
-                type="range" 
-                min={0} 
-                max={actualHojeDay} 
-                value={hojeDay} 
-                onChange={(e) => {
-                  const v = Number(e.target.value)
-                  setSimDay(v >= actualHojeDay ? null : v)
-                }} 
-                style={{ flex: 1 }}
-              />
-              <span style={{ fontSize: 13, color: '#6B7280', minWidth: 50, textAlign: 'right' }}>
-                Dia {hojeDay}
-              </span>
-            </div>
-          )}
-        </div>
+        {/* ── Slider ──────────────────────────────── */}
+        {alert.tipus_alerta !== 'geographical_alert' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#F9FAFB', padding: '12px 16px', borderRadius: 8, border: '1px solid #E5E7EB', marginTop: 16 }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Simular Dia Avui:</label>
+            <input 
+              type="range" 
+              min={0} 
+              max={actualHojeDay} 
+              value={hojeDay} 
+              onChange={(e) => {
+                const v = Number(e.target.value)
+                setSimDay(v >= actualHojeDay ? null : v)
+              }} 
+              style={{ flex: 1 }}
+            />
+            <span style={{ fontSize: 13, color: '#6B7280', minWidth: 50, textAlign: 'right' }}>
+              Dia {hojeDay}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* ── Metrics ──────────────────────────────────── */}
@@ -339,6 +341,27 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
         </div>
       </div>
 
+      {/* ── Lògica de l'Alerta ────────────────────────── */}
+      <div style={styles.logicBox}>
+        <h4 style={styles.logicTitle}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6, verticalAlign: 'text-bottom' }}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+          Com funciona aquesta alerta?
+        </h4>
+        <p style={styles.logicText}>
+          {alert.tipus_alerta === 'anticipacio' && (
+            "Aquesta alerta es genera abans de la data prevista de compra per avisar que el client aviat necessitarà reposar material. És una notificació preventiva amb prioritat baixa, ideal per avançar-se a la demanda i evitar que la clínica recorri a la competència."
+          )}
+          {alert.tipus_alerta === 'reactiva' && (
+            "Aquesta alerta s'activa un cop s'ha superat la data prevista de compra (i el seu marge de confiança). Ens indica que el client ja hauria d'haver realitzat una comanda. Com més dies de retard acumuli, més gran és el risc de pèrdua i més urgent és la intervenció."
+          )}
+          {alert.tipus_alerta === 'geographical_alert' && (
+            "Aquesta alerta es genera quan es detecta que un client té una penetració (Share of Wallet) significativament inferior a la mitjana de les clíniques del seu voltant. Això assenyala una clara oportunitat de creixement a la zona, ja que el client probablement està adquirint part del material a través d'altres proveïdors."
+          )}
+          {alert.tipus_alerta === 'fugat' && (
+            "Aquesta alerta classifica al client com a inactiu atès que fa molt temps que no realitza cap comanda. S'ha superat el llindar de retenció i caldria una estratègia específica de recuperació."
+          )}
+        </p>
+      </div>
 
       {/* ── Feedback ───────────────────────────────────── */}
       {alert.tractada && (
@@ -487,6 +510,27 @@ const styles: Record<string, CSSProperties> = {
     color: '#F2F2F7',
     fontSize: 24,
     fontWeight: 200,
+  },
+  logicBox: {
+    marginTop: 16,
+    background: '#F8FAFC',
+    borderRadius: 16,
+    padding: '20px 24px',
+    border: '1px solid #E2E8F0',
+  },
+  logicTitle: {
+    margin: '0 0 8px 0',
+    fontSize: 14,
+    fontWeight: 700,
+    color: '#0F172A',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  logicText: {
+    margin: 0,
+    fontSize: 13,
+    lineHeight: 1.6,
+    color: '#475569',
   },
 }
 

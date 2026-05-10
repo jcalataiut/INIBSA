@@ -228,10 +228,9 @@ const styles: Record<string, CSSProperties> = {
   },
   main: {
     flex: 1,
+    height: '100vh',
     overflowY: 'auto',
     padding: '0',
-    display: 'flex',
-    flexDirection: 'column',
   },
   content: {
     padding: '40px 48px',
