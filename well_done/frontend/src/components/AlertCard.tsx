@@ -49,8 +49,8 @@ export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
         </div>
 
         <div style={styles.colToggle}>
-          <button style={styles.toggle} onClick={e => { e.stopPropagation(); onToggleTreated(alert) }}>
-            {alert.tractada ? '↩' : '✓'}
+          <button style={styles.treatBtn} onClick={e => { e.stopPropagation(); onToggleTreated(alert) }}>
+            {alert.tractada ? '↩ Desfer' : '✓ Tractar'}
           </button>
         </div>
       </div>
@@ -94,7 +94,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'baseline',
   },
   colToggle: {
-    width: '40px',
+    marginLeft: 'auto',
     display: 'flex',
     justifyContent: 'flex-end',
   },
@@ -143,13 +143,14 @@ const styles: Record<string, React.CSSProperties> = {
     marginLeft: 8,
     whiteSpace: 'nowrap' as const,
   },
-  toggle: {
-    background: 'none',
+  treatBtn: {
+    background: '#111827',
     border: 'none',
-    fontSize: 14,
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: 600,
-    color: '#9CA3AF',
+    padding: '7px 16px',
     cursor: 'pointer',
-    padding: '4px',
+    fontFamily: "'Inter', sans-serif",
   },
 }

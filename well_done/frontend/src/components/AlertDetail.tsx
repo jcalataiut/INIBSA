@@ -207,14 +207,6 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
             <span style={{ fontSize: 13, color: '#6B7280', minWidth: 50, textAlign: 'right' }}>
               Dia {hojeDay}
             </span>
-            {simDay !== null && (
-              <button 
-                onClick={() => setSimDay(null)}
-                style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, cursor: 'pointer', padding: '0 4px' }}
-              >
-                Reset
-              </button>
-            )}
           </div>
         </div>
       </div>
