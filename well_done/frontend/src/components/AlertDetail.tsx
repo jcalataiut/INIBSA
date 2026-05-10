@@ -17,6 +17,7 @@ interface Purchase {
 export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
   const [data, setData] = useState<ClientDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [simDay, setSimDay] = useState<number | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -55,12 +56,17 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
   // ── Prediction zones ───────────────────────────────────
   const cicle = alert.cicle_mig_dies || 0
   const cicleStd = alert.cicle_std_dies || (cicle * 0.3)
-  const diesSense = alert.dies_sense_compra
   const hoje = new Date()
-  const hojeDay = primerDate
+  const actualHojeDay = primerDate
     ? Math.round((hoje.getTime() - primerDate.getTime()) / 86400000)
     : 0
-  const lastPurchaseDay = purchases.length > 0 ? purchases[purchases.length - 1].day : hojeDay
+
+  const hojeDay = simDay !== null ? simDay : actualHojeDay
+
+  // Només tenim en compte les compres fetes fins a l'"avui" simulat
+  const visiblePurchases = purchases.filter(p => p.day <= hojeDay)
+  const lastPurchaseDay = visiblePurchases.length > 0 ? visiblePurchases[visiblePurchases.length - 1].day : hojeDay
+  const diesSenseSimulats = hojeDay - lastPurchaseDay
 
   const properDay = lastPurchaseDay + cicle
   const low = properDay - 0.5 * cicleStd
@@ -70,10 +76,11 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
   // ── Chart dimensions ───────────────────────────────────
   const W = 800
   const H = 200
-  const PAD = { top: 20, bottom: 40, left: 10, right: 60 }
+  const PAD = { top: 30, bottom: 40, left: 10, right: 60 }
   const chartW = W - PAD.left - PAD.right
   const chartH = H - PAD.top - PAD.bottom
-  const xMax = Math.max(hojeDay + 30, properDay + riskHigh * 0.5, timelineDays * 1.1)
+  const maxSimDay = Math.max(actualHojeDay + 60, timelineDays + 60)
+  const xMax = Math.max(maxSimDay, properDay + riskHigh * 0.5)
   const xScale = (d: number) => PAD.left + (d / xMax) * chartW
   const yScale = (v: number) => PAD.top + chartH - (v / maxValor) * chartH * 0.85
 
@@ -116,16 +123,24 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
 
             {/* Purchase bars */}
             {purchases.map((p, i) => {
+              const prevP = i > 0 ? purchases[i - 1] : null
+              const isOverlap = prevP && (xScale(p.day) - xScale(prevP.day)) < 20
+              const labelYOffset = isOverlap && i % 2 !== 0 ? 18 : 6
+              const isFuture = p.day > hojeDay
+
               const barW = Math.max(3, chartW / xMax * 4)
               const barH = chartH - yScale(p.valor) + PAD.top
               return (
                 <g key={i}>
+                  <title>{p.valor.toFixed(0)}€ - día {p.day}</title>
                   <rect x={xScale(p.day) - barW / 2} y={yScale(p.valor)} width={barW} height={barH}
-                    fill={p.day <= hojeDay ? '#1565C0' : '#90A4AE'} rx={1} opacity={0.8} />
-                  <text x={xScale(p.day)} y={yScale(p.valor) - 4} textAnchor="middle"
-                    fontSize={9} fill="#374151" fontWeight={500}>
-                    {p.valor.toFixed(0)}€
-                  </text>
+                    fill={isFuture ? '#E5E7EB' : '#1565C0'} rx={1} opacity={isFuture ? 0.3 : 0.8} />
+                  {!isFuture && (
+                    <text x={xScale(p.day)} y={yScale(p.valor) - labelYOffset} textAnchor="middle"
+                      fontSize={10} fill="#374151" fontWeight={600}>
+                      {p.valor.toFixed(0)}€
+                    </text>
+                  )}
                 </g>
               )
             })}
@@ -133,8 +148,10 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
             {/* Today line */}
             <line x1={xScale(hojeDay)} y1={PAD.top} x2={xScale(hojeDay)} y2={PAD.top + chartH}
               stroke="#111827" strokeWidth={2.5} />
-            <text x={xScale(hojeDay)} y={PAD.top + chartH + 16} textAnchor="middle"
-              fontSize={10} fontWeight={700} fill="#111827">AVUI</text>
+            <text x={xScale(hojeDay)} y={PAD.top - 10} textAnchor="middle"
+              fontSize={10} fontWeight={700} fill="#111827">
+              {simDay !== null ? 'AVUI (SIM)' : 'AVUI'}
+            </text>
 
             {/* Baseline */}
             <line x1={PAD.left} y1={PAD.top + chartH} x2={PAD.left + chartW} y2={PAD.top + chartH}
@@ -148,8 +165,33 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
           </svg>
         )}
 
-        {/* ── Motiu ──────────────────────────────────── */}
-        <p style={styles.motiu}>{alert.motiu}</p>
+        {/* ── Motiu i Slider ──────────────────────────────── */}
+        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <p style={styles.motiu}>{alert.motiu}</p>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#F9FAFB', padding: '12px 16px', borderRadius: 6 }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Simular Dia Avui:</label>
+            <input 
+              type="range" 
+              min={0} 
+              max={maxSimDay} 
+              value={hojeDay} 
+              onChange={(e) => setSimDay(Number(e.target.value))} 
+              style={{ flex: 1 }}
+            />
+            <span style={{ fontSize: 13, color: '#6B7280', minWidth: 50, textAlign: 'right' }}>
+              Dia {hojeDay}
+            </span>
+            {simDay !== null && (
+              <button 
+                onClick={() => setSimDay(null)}
+                style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 12, cursor: 'pointer', padding: '0 4px' }}
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* ── Metrics ──────────────────────────────────── */}
@@ -163,7 +205,7 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
         </span>
         <span style={styles.mDiv}>|</span>
         <span style={styles.metric}>
-          {diesSense}d <span style={styles.mLabel}>sense compra</span>
+          {diesSenseSimulats}d <span style={styles.mLabel}>sense compra</span>
         </span>
         <span style={styles.mDiv}>|</span>
         <span style={styles.metric}>

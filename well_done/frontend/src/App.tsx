@@ -144,7 +144,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
   },
   content: {
-    maxWidth: 1400,
+    maxWidth: 1000,
     width: '100%',
     margin: '0 auto',
     padding: '0 32px 48px',
