@@ -176,7 +176,7 @@ def generate_alerts(cycles, sow, today, provincia_map=None):
             "id_cliente": int(row["id_cliente"]),
             "provincia": provincia_map.get(row["id_cliente"], "") if provincia_map else "",
             "familia_potencial": row["familia_potencial"],
-            "segment": "amb_historial",
+            "segment": "leal" if row["share_12m"] >= 0.70 else "promiscuo",
             "segment_anterior": None,
             "share_12m": round(float(row["share_12m"]), 3),
             "potencial_anual_eur": round(float(row["potencial_eur"]), 2),

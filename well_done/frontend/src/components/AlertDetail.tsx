@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react'
 import type { Alerta, ClientDetail } from '../types'
 import { getClient } from '../api/client'
-import { SEGMENT_COLORS, ALERTA_LABELS } from '../types'
 
 interface Props {
   alert: Alerta
   onBack: () => void
   onToggleTreated: (a: Alerta) => void
+}
+
+interface Purchase {
+  day: number
+  date: string
+  valor: number
 }
 
 export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
@@ -18,104 +23,153 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
     getClient(alert.id_cliente).then(d => { setData(d); setLoading(false) }).catch(() => setLoading(false))
   }, [alert.id_cliente])
 
-  const prioColor = alert.prioritat >= 500 ? '#E74C3C' : alert.prioritat >= 100 ? '#E67E22' : '#6B7280'
   const borderColor = alert.tipus_alerta === 'anticipacio' ? '#00B8A9'
     : alert.tipus_alerta === 'reactiva' ? '#E74C3C'
     : alert.tipus_alerta === 'fugat' ? '#6B7280'
     : '#E5E7EB'
 
-  const historial = data?.historial?.slice().reverse() || []
+  const isLeal = alert.share_12m >= 0.70
+  const shareLabel = isLeal ? 'leal' : 'promiscuo'
+  const shareColor = isLeal ? '#00B8A9' : '#F4A261'
 
-  const maxValor = Math.max(...historial.map(h => h.valor), 1)
+  // ── Build purchase timeline ────────────────────────────
+  const historial = data?.historial?.filter(h => h.familia === alert.familia_potencial).reverse() || []
+  let purchases: Purchase[] = []
+  let primerDate: Date | null = null
+  let timelineDays = 0
+  let maxValor = 1
 
-  const W = 600, H = 180, BAR_GAP = 2
+  if (historial.length > 0) {
+    const dates = historial.map(h => new Date(h.fecha))
+    primerDate = new Date(Math.min(...dates.map(d => d.getTime())))
+    purchases = historial.map(h => ({
+      day: Math.round((new Date(h.fecha).getTime() - primerDate!.getTime()) / 86400000),
+      date: h.fecha,
+      valor: h.valor,
+    }))
+    purchases.sort((a, b) => a.day - b.day)
+    timelineDays = Math.max(...purchases.map(p => p.day), 1)
+    maxValor = Math.max(...purchases.map(p => p.valor), 1)
+  }
+
+  // ── Prediction zones ───────────────────────────────────
+  const cicle = alert.cicle_mig_dies || 0
+  const cicleStd = alert.cicle_std_dies || (cicle * 0.3)
+  const diesSense = alert.dies_sense_compra
+  const hoje = new Date()
+  const hojeDay = primerDate
+    ? Math.round((hoje.getTime() - primerDate.getTime()) / 86400000)
+    : 0
+  const lastPurchaseDay = purchases.length > 0 ? purchases[purchases.length - 1].day : hojeDay
+
+  const properDay = lastPurchaseDay + cicle
+  const low = properDay - 0.5 * cicleStd
+  const high = properDay + 0.5 * cicleStd
+  const riskHigh = properDay + 1.5 * cicleStd
+
+  // ── Chart dimensions ───────────────────────────────────
+  const W = 800
+  const H = 200
+  const PAD = { top: 20, bottom: 40, left: 10, right: 60 }
+  const chartW = W - PAD.left - PAD.right
+  const chartH = H - PAD.top - PAD.bottom
+  const xMax = Math.max(hojeDay + 30, properDay + riskHigh * 0.5, timelineDays * 1.1)
+  const xScale = (d: number) => PAD.left + (d / xMax) * chartW
+  const yScale = (v: number) => PAD.top + chartH - (v / maxValor) * chartH * 0.85
 
   return (
     <div>
       <button style={styles.backBtn} onClick={onBack}>← Tornar</button>
 
+      {/* ── Header ──────────────────────────────────── */}
       <div style={{ ...styles.hero, borderLeft: `4px solid ${borderColor}` }}>
         <div style={styles.heroTop}>
           <div>
             <span style={styles.heroId}>#{alert.id_cliente}</span>
+            <span style={styles.heroSep}>·</span>
+            <span style={styles.heroFam}>{alert.familia_potencial}</span>
+            <span style={styles.heroSep}>·</span>
             <span style={styles.heroProv}>{alert.provincia || '?'}</span>
           </div>
           <button
             style={styles.treatBtn}
             onClick={() => onToggleTreated(alert)}
           >
-            {alert.tractada ? '↩ Desmarcar' : 'Tractar'}
+            {alert.tractada ? '↩' : '✓ Tractar'}
           </button>
         </div>
-        <div style={styles.heroBadges}>
-          <span style={{ ...styles.badge, background: SEGMENT_COLORS[alert.segment] || '#6B7280' }}>{alert.segment}</span>
-          <span style={{ ...styles.badge, background: borderColor }}>{ALERTA_LABELS[alert.tipus_alerta] || alert.tipus_alerta}</span>
-          <span style={{ ...styles.badge, background: prioColor }}>
-            {alert.prioritat >= 500 ? 'CRÍTICA' : alert.prioritat >= 100 ? 'IMPORTANT' : 'INFO'}
-          </span>
-        </div>
-        <p style={styles.heroMotiu}>{alert.motiu}</p>
-      </div>
 
-      <div style={styles.grid}>
-        <div style={styles.metric}>
-          <span style={styles.metricVal}>{alert.gap_eur.toLocaleString()}€</span>
-          <span style={styles.metricLabel}>Gap anual</span>
-        </div>
-        <div style={styles.metric}>
-          <span style={styles.metricVal}>{(alert.share_12m * 100).toFixed(0)}%</span>
-          <span style={styles.metricLabel}>Share of wallet</span>
-        </div>
-        <div style={styles.metric}>
-          <span style={styles.metricVal}>{alert.dies_sense_compra}d</span>
-          <span style={styles.metricLabel}>Sense compra</span>
-        </div>
-        <div style={styles.metric}>
-          <span style={styles.metricVal}>{alert.cicle_mig_dies ? alert.cicle_mig_dies.toFixed(0) : '?'}d</span>
-          <span style={styles.metricLabel}>Cicle mitjà</span>
-        </div>
-      </div>
-
-      <div style={styles.section}>
-        <span style={styles.sectionTitle}>Historial de compres</span>
+        {/* ── Chart ──────────────────────────────────── */}
         {loading ? (
-          <p style={{ color: '#6B7280', fontSize: 13 }}>Carregant...</p>
-        ) : historial.length === 0 ? (
-          <p style={{ color: '#6B7280', fontSize: 13 }}>Sense historial</p>
+          <p style={{ color: '#9CA3AF', fontSize: 13, padding: '40px 0', textAlign: 'center' }}>Carregant historial...</p>
+        ) : purchases.length === 0 ? (
+          <p style={{ color: '#9CA3AF', fontSize: 13, padding: '40px 0', textAlign: 'center' }}>Sense historial de compres</p>
         ) : (
-          <svg width="100%" viewBox={`0 0 ${W} ${H + 40}`} style={styles.chart}>
-            {historial.map((h, i) => {
-              const x = i * (W / historial.length)
-              const barW = Math.max(4, W / historial.length - BAR_GAP)
-              const barH = (h.valor / maxValor) * H
+          <svg width="100%" viewBox={`0 0 ${W} ${H + 50}`} style={styles.chartSvg}>
+            {/* Prediction zones */}
+            <rect x={xScale(low)} y={PAD.top} width={xScale(high) - xScale(low)} height={chartH}
+              fill="rgba(0,184,169,0.10)" rx={2} />
+            <rect x={xScale(high)} y={PAD.top} width={xScale(riskHigh) - xScale(high)} height={chartH}
+              fill="rgba(231,76,60,0.08)" rx={2} />
+            <line x1={xScale(properDay)} y1={PAD.top} x2={xScale(properDay)} y2={PAD.top + chartH}
+              stroke="#00B8A9" strokeWidth={1} strokeDasharray="4,3" opacity={0.5} />
+
+            {/* Purchase bars */}
+            {purchases.map((p, i) => {
+              const barW = Math.max(3, chartW / xMax * 4)
+              const barH = chartH - yScale(p.valor) + PAD.top
               return (
                 <g key={i}>
-                  <rect x={x} y={H - barH} width={barW} height={barH} fill="#00B8A9" rx={1} />
-                  <text x={x + barW / 2} y={H + 14} textAnchor="end" fontSize="8" fill="#9CA3AF" transform={`rotate(-45, ${x + barW / 2}, ${H + 14})`}>
-                    {h.fecha.slice(5, 10)}
+                  <rect x={xScale(p.day) - barW / 2} y={yScale(p.valor)} width={barW} height={barH}
+                    fill={p.day <= hojeDay ? '#1565C0' : '#90A4AE'} rx={1} opacity={0.8} />
+                  <text x={xScale(p.day)} y={yScale(p.valor) - 4} textAnchor="middle"
+                    fontSize={9} fill="#374151" fontWeight={500}>
+                    {p.valor.toFixed(0)}€
                   </text>
                 </g>
               )
             })}
-            <line x1={0} y1={H} x2={W} y2={H} stroke="#E5E7EB" />
+
+            {/* Today line */}
+            <line x1={xScale(hojeDay)} y1={PAD.top} x2={xScale(hojeDay)} y2={PAD.top + chartH}
+              stroke="#111827" strokeWidth={2.5} />
+            <text x={xScale(hojeDay)} y={PAD.top + chartH + 16} textAnchor="middle"
+              fontSize={10} fontWeight={700} fill="#111827">AVUI</text>
+
+            {/* Baseline */}
+            <line x1={PAD.left} y1={PAD.top + chartH} x2={PAD.left + chartW} y2={PAD.top + chartH}
+              stroke="#E5E7EB" strokeWidth={1} />
+
+            {/* X-axis labels */}
+            {[0, Math.round(xMax * 0.25), Math.round(xMax * 0.5), Math.round(xMax * 0.75), Math.round(xMax)].map(d => (
+              <text key={d} x={xScale(d)} y={PAD.top + chartH + 30} textAnchor="middle"
+                fontSize={9} fill="#9CA3AF">dia {d}</text>
+            ))}
           </svg>
         )}
+
+        {/* ── Motiu ──────────────────────────────────── */}
+        <p style={styles.motiu}>{alert.motiu}</p>
       </div>
 
-      {data?.alertes && data.alertes.length > 0 && (
-        <div style={styles.section}>
-          <span style={styles.sectionTitle}>Alertes del client</span>
-          {data.alertes.map((a, i) => (
-            <div key={i} style={styles.miniAlert}>
-              <span style={{ ...styles.miniBadge, background: a.prioritat >= 500 ? '#E74C3C' : a.prioritat >= 100 ? '#E67E22' : '#6B7280' }}>
-                {a.tipus_alerta.replace(/_/g, ' ')}
-              </span>
-              <span style={styles.miniFam}>{a.familia_potencial}</span>
-              <span style={styles.miniPrio}>prio {a.prioritat.toFixed(0)}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* ── Metrics ──────────────────────────────────── */}
+      <div style={styles.metrics}>
+        <span style={{ ...styles.metric, color: shareColor }}>
+          {(alert.share_12m * 100).toFixed(0)}% <span style={styles.mLabel}>{shareLabel}</span>
+        </span>
+        <span style={styles.mDiv}>|</span>
+        <span style={styles.metric}>
+          {alert.gap_eur.toLocaleString()}€ <span style={styles.mLabel}>gap</span>
+        </span>
+        <span style={styles.mDiv}>|</span>
+        <span style={styles.metric}>
+          {diesSense}d <span style={styles.mLabel}>sense compra</span>
+        </span>
+        <span style={styles.mDiv}>|</span>
+        <span style={styles.metric}>
+          {cicle > 0 ? `${cicle.toFixed(0)}d` : '-'} <span style={styles.mLabel}>cicle{cicleStd > 0 ? ` ±${cicleStd.toFixed(0)}` : ''}</span>
+        </span>
+      </div>
     </div>
   )
 }
@@ -135,20 +189,30 @@ const styles: Record<string, React.CSSProperties> = {
   hero: {
     background: '#FFFFFF',
     border: '1px solid #E5E7EB',
-    padding: '24px 28px',
-    marginBottom: 20,
+    padding: '20px 24px',
+    marginBottom: 12,
   },
   heroTop: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   heroId: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 700,
     color: '#111827',
-    marginRight: 8,
+    fontVariantNumeric: 'tabular-nums',
+  },
+  heroSep: {
+    color: '#D1D5DB',
+    margin: '0 6px',
+    fontSize: 16,
+  },
+  heroFam: {
+    fontSize: 16,
+    fontWeight: 600,
+    color: '#374151',
   },
   heroProv: {
     fontSize: 13,
@@ -160,93 +224,42 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: 600,
-    padding: '8px 18px',
+    padding: '7px 16px',
     cursor: 'pointer',
     fontFamily: "'Inter', sans-serif",
   },
-  heroBadges: {
-    display: 'flex',
-    gap: 8,
-    marginBottom: 12,
+  chartSvg: {
+    display: 'block',
+    marginBottom: 16,
   },
-  badge: {
-    fontSize: 10,
-    fontWeight: 600,
-    color: '#FFFFFF',
-    padding: '3px 10px',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  heroMotiu: {
-    fontSize: 13,
+  motiu: {
+    fontSize: 12,
     color: '#6B7280',
     lineHeight: 1.5,
     margin: 0,
   },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: 12,
-    marginBottom: 20,
-  },
-  metric: {
-    background: '#FFFFFF',
-    border: '1px solid #E5E7EB',
-    padding: '16px 20px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 2,
-  },
-  metricVal: {
-    fontSize: 22,
-    fontWeight: 700,
-    color: '#111827',
-  },
-  metricLabel: {
-    fontSize: 10,
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    display: 'block',
-    fontSize: 12,
-    fontWeight: 600,
-    color: '#111827',
-    marginBottom: 12,
-  },
-  chart: {
-    background: '#FFFFFF',
-    border: '1px solid #E5E7EB',
-    padding: '16px 20px',
-  },
-  miniAlert: {
+  metrics: {
     display: 'flex',
     alignItems: 'center',
-    gap: 12,
-    padding: '8px 16px',
+    gap: 8,
     background: '#FFFFFF',
     border: '1px solid #E5E7EB',
-    marginBottom: 4,
+    padding: '14px 20px',
+    flexWrap: 'wrap' as const,
   },
-  miniBadge: {
-    fontSize: 9,
+  metric: {
+    fontSize: 15,
     fontWeight: 600,
-    color: '#FFFFFF',
-    padding: '2px 8px',
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-  },
-  miniFam: {
-    fontSize: 12,
     color: '#111827',
-    flex: 1,
+    fontVariantNumeric: 'tabular-nums',
   },
-  miniPrio: {
+  mLabel: {
     fontSize: 11,
-    color: '#6B7280',
+    fontWeight: 400,
+    color: '#9CA3AF',
+  },
+  mDiv: {
+    color: '#E5E7EB',
+    fontSize: 14,
   },
 }

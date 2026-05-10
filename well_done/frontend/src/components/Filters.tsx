@@ -11,12 +11,12 @@ interface Props {
   onShowTreatedChange: (v: boolean) => void
 }
 
-const SEGMENTS = ['amb_historial', 'sense_historial', 'fugat']
+const SEGMENTS = ['leal', 'promiscuo', 'fugat']
 const TIPUS = ['anticipacio', 'reactiva', 'fugat']
 const URGENCIES = ['critica', 'alta', 'mitjana', 'baixa']
 
 const LABEL_SEG: Record<string, string> = {
-  amb_historial: 'Amb Historial', sense_historial: 'Sense Historial', fugat: 'Fugat',
+  leal: 'Leal', promiscuo: 'Promiscuo', fugat: 'Fugat',
 }
 const LABEL_TIPUS: Record<string, string> = {
   anticipacio: 'Anticipació', reactiva: 'Reactiva', fugat: 'Fugat',

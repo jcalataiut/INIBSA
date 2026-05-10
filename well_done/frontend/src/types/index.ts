@@ -45,9 +45,9 @@ export interface TreatedAlert {
 }
 
 export const SEGMENT_COLORS: Record<string, string> = {
-  amb_historial: '#00B8A9',
-  sense_historial: '#6B7280',
-  fugat: '#E74C3C',
+  leal: '#00B8A9',
+  promiscuo: '#F4A261',
+  fugat: '#6B7280',
 }
 
 export interface ClientDetail {
