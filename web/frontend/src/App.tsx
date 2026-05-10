@@ -221,15 +221,12 @@ export default function App() {
 
 const styles: Record<string, CSSProperties> = {
   container: {
-    height: '100vh',
+    minHeight: '100vh',
     background: '#F4F7F9',
     display: 'flex',
-    overflow: 'hidden',
   },
   main: {
     flex: 1,
-    height: '100vh',
-    overflowY: 'auto',
     padding: '0',
   },
   content: {

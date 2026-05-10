@@ -51,6 +51,8 @@ const styles: Record<string, CSSProperties> = {
     width: 210,
     background: '#FFFFFF',
     height: '100vh',
+    position: 'sticky',
+    top: 0,
     display: 'flex',
     flexDirection: 'column',
     borderRight: '1px solid #E2E8F0',
