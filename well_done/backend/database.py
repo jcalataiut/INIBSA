@@ -58,8 +58,23 @@ def init_db():
                 familia_potencial VARCHAR(50) NOT NULL,
                 tipus_alerta VARCHAR(50) NOT NULL,
                 treated_date DATE NOT NULL,
+                resultado VARCHAR(20),
+                importe_venta NUMERIC DEFAULT 0,
+                fecha_resultado DATE,
                 created_at TIMESTAMP DEFAULT NOW()
             )
+        """))
+        conn.execute(text("""
+            ALTER TABLE treated_alerts
+            ADD COLUMN IF NOT EXISTS resultado VARCHAR(20)
+        """))
+        conn.execute(text("""
+            ALTER TABLE treated_alerts
+            ADD COLUMN IF NOT EXISTS importe_venta NUMERIC DEFAULT 0
+        """))
+        conn.execute(text("""
+            ALTER TABLE treated_alerts
+            ADD COLUMN IF NOT EXISTS fecha_resultado DATE
         """))
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS alertes_cache (

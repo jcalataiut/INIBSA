@@ -14,29 +14,44 @@ const URG: Record<string, { bg: string; txt: string }> = {
 }
 
 const TIPUS_STYLE: Record<string, { label: string; color: string }> = {
-  anticipacio:      { label: 'ANTICIPAT', color: '#059669' },
-  reactiva:         { label: 'REACTIVA',  color: '#DC2626' },
-  fugat:            { label: 'FUGAT',     color: '#6B7280' },
-  anomalia_groga:   { label: 'ANOMALIA',  color: '#D97706' },
-  anomalia_vermella:{ label: 'VERMELLA',  color: '#DC2626' },
-  monitoritzar:     { label: 'MONITOR',   color: '#3B82F6' },
+  anticipacio:        { label: 'ANTICIPAT', color: '#059669' },
+  reactiva:           { label: 'REACTIVA',  color: '#DC2626' },
+  fugat:              { label: 'FUGAT',     color: '#6B7280' },
+  anomalia_groga:     { label: 'GROGA',     color: '#D97706' },
+  anomalia_vermella:  { label: 'VERMELLA',  color: '#DC2626' },
+  caiguda_volum:      { label: 'VOLUM',     color: '#8B5CF6' },
+  monitoritzar:       { label: 'MONITOR',   color: '#3B82F6' },
 }
 
-function segmentLabel(seg: string, share: number): string {
-  if (seg === 'fugat') return 'fugat'
-  if (seg === 'actiu_regular' || seg === 'leal') return 'leal'
-  if (seg === 'actiu_esporadic' || seg === 'promiscuo') return 'promiscuo'
-  if (seg === 'inactiu_recent' || seg === 'inactiu_total') return 'inactiu'
-  return share >= 0.70 ? 'leal' : 'promiscuo'
+const TECH_COLORS: Record<string, string> = {
+  actiu_regular: '#059669',
+  actiu_esporadic: '#D97706',
+  inactiu_recent: '#E74C3C',
+  inactiu_total: '#6B7280',
+  fugat: '#6B7280',
+}
+
+function badgeInfo(alert: Alerta): { label: string; color: string } {
+  if (alert.familia_potencial === 'Biomateriales') {
+    const color = TECH_COLORS[alert.segment] || '#6B7280'
+    const label = alert.segment === 'actiu_regular' ? 'actiu'
+      : alert.segment === 'actiu_esporadic' ? 'esporàdic'
+      : alert.segment === 'inactiu_recent' ? 'inactiu'
+      : alert.segment === 'inactiu_total' ? 'inactiu'
+      : alert.segment
+    return { label, color }
+  }
+  if (alert.segment === 'fugat') return { label: 'fugat', color: '#6B7280' }
+  const isLeal = alert.segment === 'leal' || alert.segment === 'actiu_regular' || alert.share_12m >= 0.70
+  return { label: isLeal ? 'leal' : 'promiscuo', color: isLeal ? '#059669' : '#D97706' }
 }
 
 export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
   const isFugat = alert.segment === 'fugat'
-  const sLabel = segmentLabel(alert.segment, alert.share_12m)
-  const shareColor = isFugat ? '#6B7280' : (alert.share_12m >= 0.70 ? '#059669' : '#D97706')
+  const isTechnical = alert.familia_potencial === 'Biomateriales'
+  const badge = badgeInfo(alert)
 
   const ts = TIPUS_STYLE[alert.tipus_alerta] || { label: alert.tipus_alerta.replace(/_/g, ' ').toUpperCase(), color: '#6B7280' }
-
   const urg = URG[alert.urgencia] || URG.baixa
 
   return (
@@ -52,8 +67,8 @@ export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
           {!isFugat && (
             <>
               <span style={styles.sep}>·</span>
-              <span style={{ ...styles.shareBadge, color: shareColor, borderColor: shareColor }}>
-                {(alert.share_12m * 100).toFixed(0)}% {sLabel}
+              <span style={{ ...styles.shareBadge, color: badge.color, borderColor: badge.color }}>
+                {isTechnical ? badge.label : `${(alert.share_12m * 100).toFixed(0)}% ${badge.label}`}
               </span>
             </>
           )}

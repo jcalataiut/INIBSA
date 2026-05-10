@@ -42,6 +42,16 @@ export interface TreatedAlert {
   familia_potencial: string
   tipus_alerta: string
   treated_date: string
+  resultado: string | null
+  importe_venta: number | null
+}
+
+export interface FeedbackStats {
+  total_tractades: number
+  convertides: number
+  no_convertides: number
+  taxa_conversio: number
+  import_total: number
 }
 
 export const SEGMENT_COLORS: Record<string, string> = {
@@ -68,5 +78,6 @@ export const ALERTA_LABELS: Record<string, string> = {
   fugat: 'Fugat',
   anomalia_groga: 'Anomalia Groga',
   anomalia_vermella: 'Anomalia Vermella',
+  caiguda_volum: 'Caiguda de Volum',
   monitoritzar: 'Monitoritzar',
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Alerta, ClientDetail } from '../types'
-import { getClient } from '../api/client'
+import { getClient, updateFeedback } from '../api/client'
 
 interface Props {
   alert: Alerta
@@ -285,6 +285,56 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
           {simCicle > 0 ? `${simCicle.toFixed(0)}d` : '-'} <span style={styles.mLabel}>cicle{simCicleStd > 0 ? ` ±${simCicleStd.toFixed(0)}` : ''}</span>
         </span>
       </div>
+
+      {/* ── Feedback ───────────────────────────────────── */}
+      {alert.tractada && (
+        <FeedbackForm alert={alert} />
+      )}
+    </div>
+  )
+}
+
+function FeedbackForm({ alert }: { alert: Alerta }) {
+  const [resultado, setResultado] = useState<string | null>(null)
+  const [importe, setImporte] = useState('')
+  const [saved, setSaved] = useState(false)
+
+  const handleSave = async () => {
+    if (!resultado) return
+    await updateFeedback(alert.id_cliente, alert.familia_potencial, alert.tipus_alerta, resultado, resultado === 'convertido' ? Number(importe) || 0 : undefined)
+    setSaved(true)
+  }
+
+  return (
+    <div style={feedbackStyles.box}>
+      <span style={feedbackStyles.title}>Resultat de la intervenció</span>
+      {saved ? (
+        <span style={feedbackStyles.saved}>✓ Registrat</span>
+      ) : (
+        <>
+          <div style={feedbackStyles.btns}>
+            {(['convertido', 'no_convertido', 'sin_contacto'] as const).map(r => (
+              <button
+                key={r}
+                style={{ ...feedbackStyles.btn, ...(resultado === r ? feedbackStyles.btnActive : {}) }}
+                onClick={() => { setResultado(r); setSaved(false) }}
+              >
+                {r === 'convertido' ? '✓ Venda' : r === 'no_convertido' ? '✕ No venda' : '— Sense contacte'}
+              </button>
+            ))}
+          </div>
+          {resultado === 'convertido' && (
+            <div style={feedbackStyles.importeRow}>
+              <span style={feedbackStyles.importeLbl}>Import:</span>
+              <input style={feedbackStyles.importeInput} type="number" value={importe} onChange={e => setImporte(e.target.value)} placeholder="0" />
+              <span style={feedbackStyles.importeLbl}>€</span>
+            </div>
+          )}
+          {resultado && (
+            <button style={feedbackStyles.saveBtn} onClick={handleSave}>Guardar</button>
+          )}
+        </>
+      )}
     </div>
   )
 }
@@ -376,5 +426,76 @@ const styles: Record<string, React.CSSProperties> = {
   mDiv: {
     color: '#E5E7EB',
     fontSize: 14,
+  },
+}
+
+const feedbackStyles: Record<string, React.CSSProperties> = {
+  box: {
+    background: '#F9FAFB',
+    border: '1px solid #E5E7EB',
+    padding: '16px 20px',
+    marginTop: 12,
+  },
+  title: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: '#374151',
+    display: 'block',
+    marginBottom: 10,
+  },
+  btns: {
+    display: 'flex',
+    gap: 6,
+  },
+  btn: {
+    background: '#FFFFFF',
+    border: '1px solid #D1D5DB',
+    color: '#6B7280',
+    fontSize: 12,
+    fontWeight: 500,
+    padding: '6px 12px',
+    cursor: 'pointer',
+    fontFamily: "'Inter', sans-serif",
+  },
+  btnActive: {
+    background: '#111827',
+    border: '1px solid #111827',
+    color: '#FFFFFF',
+  },
+  importeRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+  },
+  importeLbl: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  importeInput: {
+    background: '#FFFFFF',
+    border: '1px solid #D1D5DB',
+    color: '#111827',
+    fontSize: 13,
+    fontWeight: 600,
+    padding: '6px 10px',
+    width: 100,
+    fontFamily: "'Inter', sans-serif",
+  },
+  saveBtn: {
+    background: '#00B8A9',
+    border: 'none',
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 600,
+    padding: '7px 20px',
+    cursor: 'pointer',
+    fontFamily: "'Inter', sans-serif",
+    marginTop: 10,
+  },
+  saved: {
+    fontSize: 13,
+    color: '#059669',
+    fontWeight: 600,
   },
 }

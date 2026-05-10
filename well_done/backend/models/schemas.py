@@ -31,6 +31,8 @@ class AlertaTreatedIn(BaseModel):
     id_cliente: int
     familia_potencial: str
     tipus_alerta: str
+    resultado: str | None = None
+    importe_venta: float | None = None
 
 class AlertaTreatedOut(BaseModel):
     id: int
@@ -39,6 +41,15 @@ class AlertaTreatedOut(BaseModel):
     familia_potencial: str
     tipus_alerta: str
     treated_date: str
+    resultado: str | None = None
+    importe_venta: float | None = None
+
+class FeedbackStatsOut(BaseModel):
+    total_tractades: int
+    convertides: int
+    no_convertides: int
+    taxa_conversio: float
+    import_total: float
 
 class StatsOut(BaseModel):
     total_alertes: int

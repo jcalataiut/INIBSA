@@ -56,7 +56,17 @@ def get_alerts(
         query += " AND urgencia = :urgencia"
         params["urgencia"] = urgencia
 
-    query += " ORDER BY prioritat DESC NULLS LAST"
+    query += """
+      ORDER BY
+        CASE urgencia
+          WHEN 'critica' THEN 4
+          WHEN 'alta' THEN 3
+          WHEN 'mitjana' THEN 2
+          WHEN 'baixa' THEN 1
+          ELSE 0
+        END DESC,
+        gap_eur DESC NULLS LAST
+    """
 
     df = pd.read_sql(text(query), engine, params=params)
     df = df.replace({np.nan: None, pd.NA: None})

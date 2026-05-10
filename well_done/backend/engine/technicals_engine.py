@@ -102,6 +102,7 @@ def calc_individual_pattern(df):
                 "id_cliente": cli, "familia_potencial": fam,
                 "freq_mig_dies": np.nan, "freq_std_dies": np.nan,
                 "vol_mig_eur": float(valores.mean()) if len(valores) > 0 else 0.0,
+                "vol_ratio": None,
                 "num_intervals": 0,
                 "data_ultim_pedido": dates[-1] if len(dates) else pd.NaT,
                 "data_primer_pedido": dates[0] if len(dates) else pd.NaT,
@@ -109,11 +110,21 @@ def calc_individual_pattern(df):
         else:
             diffs = np.diff(dates.astype("datetime64[D]")).astype(float)
             vol_per_order = grp.groupby("fecha")["valores_h"].sum().values
+            vol_mig = float(np.mean(vol_per_order))
+            if len(vol_per_order) >= 4:
+                vol_recent = float(np.mean(vol_per_order[-2:]))
+                vol_ratio = round(vol_recent / vol_mig, 3) if vol_mig > 0 else 1.0
+            elif len(vol_per_order) >= 2:
+                vol_recent = float(vol_per_order[-1])
+                vol_ratio = round(vol_recent / vol_mig, 3) if vol_mig > 0 else 1.0
+            else:
+                vol_ratio = None
             records.append({
                 "id_cliente": cli, "familia_potencial": fam,
                 "freq_mig_dies": float(np.mean(diffs)),
                 "freq_std_dies": float(np.std(diffs, ddof=1)) if len(diffs) > 1 else float(np.mean(diffs) * 0.5),
-                "vol_mig_eur": float(np.mean(vol_per_order)),
+                "vol_mig_eur": vol_mig,
+                "vol_ratio": vol_ratio,
                 "num_intervals": len(diffs),
                 "data_ultim_pedido": dates[-1],
                 "data_primer_pedido": dates[0],
@@ -293,49 +304,70 @@ def generate_alerts(classified, today, provincia_map=None):
 
         esperat_str = f"Patró: cada {freq:.0f} dies ±{std:.0f}"
 
-        # Determinar llindar segons tipus de client
+        # ── Anomalia temporal ─────────────────────────────────
+        def _make_time_alert(tipus, urgencia, canal, prioritat, motiu):
+            alert.update({
+                "tipus_alerta": tipus, "urgencia": urgencia, "canal": canal,
+                "z_score": round(float(z_score), 2),
+                "dies_retard": int(max(0, dies_sense - freq)),
+                "prioritat": prioritat, "motiu": motiu,
+            })
+            alerts.append(alert)
+            return True
+
         if segment == "actiu_esporadic":
-            llindar = LLINDAR_ESPORADIC_STD
-            prefix_urgencia = "baixa"
+            if z_score >= LLINDAR_ESPORADIC_STD:
+                prob = PROB_CONVERSIO.get(segment, 0.5)
+                p = calc_prioritat(alert["gap_eur"], z_score, prob)
+                _make_time_alert("anomalia_groga", "baixa", "televenda", p,
+                    f"Client esporàdic de {row['familia_potencial']} amb ANOMALIA GROGA. "
+                    f"Porta {dies_sense} dies sense comprar (z={z_score:.1f}). "
+                    f"{esperat_str}. Vigilar.")
+                continue
         else:
-            llindar_vermell = LLINDAR_VERMELLA_STD
-            llindar_groc = LLINDAR_GROGA_STD
-
-            if z_score >= llindar_vermell:
-                alert["tipus_alerta"] = "anomalia_vermella"
-                alert["urgencia"] = "alta"
-                alert["canal"] = "delegat"
-                alert["z_score"] = round(float(z_score), 2)
-                alert["dies_retard"] = int(max(0, dies_sense - freq))
-
+            if z_score >= LLINDAR_VERMELLA_STD:
                 prob = PROB_CONVERSIO.get(segment, 0.6)
-                alert["prioritat"] = calc_prioritat(alert["gap_eur"], z_score, prob)
-                alert["motiu"] = (
+                p = calc_prioritat(alert["gap_eur"], z_score, prob)
+                _make_time_alert("anomalia_vermella", "alta", "delegat", p,
                     f"Client de {row['familia_potencial']} amb ANOMALIA VERMELLA. "
                     f"Porta {dies_sense} dies sense comprar (z={z_score:.1f}). "
-                    f"{esperat_str}. "
-                    f"Risc alt de pèrdua — intervenció urgent."
-                )
-                alerts.append(alert)
+                    f"{esperat_str}. Risc alt de pèrdua — intervenció urgent.")
                 continue
 
-            elif z_score >= llindar_groc:
-                alert["tipus_alerta"] = "anomalia_groga"
-                alert["urgencia"] = "mitjana"
-                alert["canal"] = "televenda"
-                alert["z_score"] = round(float(z_score), 2)
-                alert["dies_retard"] = int(max(0, dies_sense - freq))
-
+            elif z_score >= LLINDAR_GROGA_STD:
                 prob = PROB_CONVERSIO.get(segment, 0.6)
-                alert["prioritat"] = calc_prioritat(alert["gap_eur"], z_score, prob)
-                alert["motiu"] = (
+                p = calc_prioritat(alert["gap_eur"], z_score, prob)
+                _make_time_alert("anomalia_groga", "mitjana", "televenda", p,
                     f"Client de {row['familia_potencial']} amb ANOMALIA GROGA. "
                     f"Porta {dies_sense} dies sense comprar (z={z_score:.1f}). "
-                    f"{esperat_str}. "
-                    f"Vigilar evolució."
-                )
-                alerts.append(alert)
+                    f"{esperat_str}. Vigilar evolució.")
                 continue
+
+        # ── Si no hi ha anomalia temporal, detectar caiguda de volum ──
+        try:
+            vol_ratio = float(row["vol_ratio"]) if "vol_ratio" in row.index and not pd.isna(row["vol_ratio"]) else None
+        except (KeyError, ValueError, TypeError):
+            vol_ratio = None
+
+        if vol_ratio is not None and vol_ratio < 0.6 and row["num_intervals"] >= 3:
+            alert["tipus_alerta"] = "caiguda_volum"
+            alert["urgencia"] = "mitjana"
+            alert["canal"] = "televenda"
+            alert["z_score"] = round(float(z_score), 2)
+            alert["dies_retard"] = int(max(0, dies_sense - freq))
+            alert["proxim_pedido_esperat"] = None
+
+            prob = PROB_CONVERSIO.get(segment, 0.5)
+            caiguda_pct = round((1 - vol_ratio) * 100)
+            alert["prioritat"] = round(alert["gap_eur"] * (1 - vol_ratio) * prob, 2)
+            alert["motiu"] = (
+                f"Client de {row['familia_potencial']} amb CAIGUDA DE VOLUM. "
+                f"Últimes comandes un {caiguda_pct:.0f}% per sota del seu històric "
+                f"(mitjana: {float(row['vol_mig_eur']):.0f}€). "
+                f"Possible desviació de compra a competència."
+            )
+            alerts.append(alert)
+            continue
 
     if not alerts:
         return pd.DataFrame()
