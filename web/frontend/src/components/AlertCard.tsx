@@ -1,4 +1,5 @@
 import type { Alerta } from '../types'
+import ContactActions from './ContactActions'
 
 interface Props {
   alert: Alerta
@@ -80,15 +81,7 @@ export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
               {alert.urgencia.toUpperCase()}
             </span>
           )}
-          <button style={styles.actionBtn} onClick={e => { e.stopPropagation(); window.alert(`📧 Simulant enviament de correu al client #${alert.id_cliente}...`) }} title="Enviar correu">
-            ✉
-          </button>
-          <button style={styles.actionBtn} onClick={e => { e.stopPropagation(); window.alert(`📞 Simulant trucada al client #${alert.id_cliente}...`) }} title="Trucar">
-            📞
-          </button>
-          <button style={styles.btn} onClick={e => { e.stopPropagation(); onToggleTreated(alert) }}>
-            {alert.tractada ? '↩' : '✓'}
-          </button>
+          <ContactActions alert={alert} onToggleTreated={onToggleTreated} variant="compact" />
         </div>
       </div>
 
@@ -114,12 +107,12 @@ const styles: Record<string, React.CSSProperties> = {
   card: {
     background: '#FFFFFF',
     border: '1px solid #E5E7EB',
-    borderRadius: 6,
+    borderRadius: 8,
     padding: '16px 20px',
     marginBottom: 8,
     cursor: 'pointer',
-    transition: 'box-shadow 0.15s ease',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+    transition: 'all 0.2s ease',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
   },
   top: {
     display: 'flex',
@@ -136,7 +129,7 @@ const styles: Record<string, React.CSSProperties> = {
   right: {
     display: 'flex',
     alignItems: 'center',
-    gap: 6,
+    gap: 10,
     flexShrink: 0,
   },
   id: {
@@ -180,28 +173,6 @@ const styles: Record<string, React.CSSProperties> = {
     textTransform: 'uppercase' as const,
     letterSpacing: 0.5,
     whiteSpace: 'nowrap' as const,
-  },
-  actionBtn: {
-    background: '#F3F4F6',
-    border: '1px solid #D1D5DB',
-    color: '#374151',
-    fontSize: 14,
-    padding: '5px 9px',
-    cursor: 'pointer',
-    lineHeight: 1,
-    fontFamily: "'Inter', sans-serif",
-  },
-  btn: {
-    background: '#111827',
-    border: 'none',
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: 700,
-    padding: '6px 12px',
-    cursor: 'pointer',
-    fontFamily: "'Inter', sans-serif",
-    marginLeft: 4,
-    lineHeight: 1,
   },
   bottom: {
     display: 'flex',

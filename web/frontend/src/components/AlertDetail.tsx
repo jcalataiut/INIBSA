@@ -4,6 +4,7 @@ import { getClient, updateFeedback, getMapData } from '../api/client'
 import { MapContainer, TileLayer, CircleMarker, Tooltip } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { MapPoint } from '../types'
+import ContactActions from './ContactActions'
 
 interface Props {
   alert: Alerta
@@ -150,11 +151,7 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
             <span style={styles.heroProv}>{alert.provincia || '?'}</span>
           </div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <button style={styles.actionBtn} onClick={() => window.alert(`📧 Simulant enviament de correu al client #${alert.id_cliente}...`)} title="Enviar correu">✉</button>
-            <button style={styles.actionBtn} onClick={() => window.alert(`📞 Simulant trucada al client #${alert.id_cliente}...`)} title="Trucar">📞</button>
-            <button style={styles.treatBtn} onClick={() => onToggleTreated(alert)}>
-              {alert.tractada ? '↩' : '✓ Tractar'}
-            </button>
+            <ContactActions alert={alert} onToggleTreated={onToggleTreated} variant="large" />
           </div>
         </div>
 
