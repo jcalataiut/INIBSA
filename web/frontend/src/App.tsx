@@ -136,37 +136,39 @@ export default function App() {
       <div style={styles.content}>
         <div style={styles.headerSection}>
           <h1 style={styles.title}>{TITLE[activeTab]}</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Filters
-              activeFamilia={familiaFilter}
-              filterSegment={filterSegment}
-              filterTipus={filterTipus}
-              filterUrgencia={filterUrgencia}
-              showTreated={showTreated}
-              onSegmentChange={setFilterSegment}
-              onTipusChange={setFilterTipus}
-              onUrgenciaChange={setFilterUrgencia}
-              onShowTreatedChange={setShowTreated}
-            />
-            <div style={styles.toggle}>
-              <button
-                style={{ ...styles.toggleBtn, ...(familiaFilter === 'commodities' ? styles.toggleActive : {}) }}
-                onClick={() => {
-                  setFamiliaFilter('commodities')
-                  setFilterSegment([])
-                  setFilterTipus([])
-                }}
-              >Commodities</button>
-              <button
-                style={{ ...styles.toggleBtn, ...(familiaFilter === 'technicals' ? styles.toggleActive : {}) }}
-                onClick={() => {
-                  setFamiliaFilter('technicals')
-                  setFilterSegment([])
-                  setFilterTipus([])
-                }}
-              >Tècnics</button>
+          {activeTab === 'briefing' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Filters
+                activeFamilia={familiaFilter}
+                filterSegment={filterSegment}
+                filterTipus={filterTipus}
+                filterUrgencia={filterUrgencia}
+                showTreated={showTreated}
+                onSegmentChange={setFilterSegment}
+                onTipusChange={setFilterTipus}
+                onUrgenciaChange={setFilterUrgencia}
+                onShowTreatedChange={setShowTreated}
+              />
+              <div style={styles.toggle}>
+                <button
+                  style={{ ...styles.toggleBtn, ...(familiaFilter === 'commodities' ? styles.toggleActive : {}) }}
+                  onClick={() => {
+                    setFamiliaFilter('commodities')
+                    setFilterSegment([])
+                    setFilterTipus([])
+                  }}
+                >Commodities</button>
+                <button
+                  style={{ ...styles.toggleBtn, ...(familiaFilter === 'technicals' ? styles.toggleActive : {}) }}
+                  onClick={() => {
+                    setFamiliaFilter('technicals')
+                    setFilterSegment([])
+                    setFilterTipus([])
+                  }}
+                >Tècnics</button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
         <p style={styles.dateSub}>{formatDate(today)}</p>
 

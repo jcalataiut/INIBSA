@@ -12,17 +12,16 @@ interface Props {
   onShowTreatedChange: (v: boolean) => void
 }
 
-const COMMODITIES_SEGMENTS = ['leal', 'promiscuo', 'fugat']
-const COMMODITIES_TIPUS = ['anticipacio', 'reactiva', 'fugat', 'geographical_alert']
+const COMMODITIES_SEGMENTS = ['leal', 'promiscuo']
+const COMMODITIES_TIPUS = ['anticipacio', 'reactiva', 'geographical_alert']
 
-const TECHNICALS_SEGMENTS = ['actiu_regular', 'actiu_esporadic', 'inactiu_recent', 'inactiu_total', 'fugat']
-const TECHNICALS_TIPUS = ['anomalia_groga', 'anomalia_vermella', 'monitoritzar', 'caiguda_volum', 'fugat', 'geographical_alert']
+const TECHNICALS_SEGMENTS = ['actiu_regular', 'actiu_esporadic', 'inactiu_recent', 'inactiu_total']
+const TECHNICALS_TIPUS = ['anomalia_groga', 'anomalia_vermella', 'monitoritzar', 'caiguda_volum', 'geographical_alert']
 
 const LABEL_SEG: Record<string, string> = {
   leal: 'Leal', promiscuo: 'Promiscuo',
   actiu_regular: 'Actiu Regular', actiu_esporadic: 'Actiu Esporàdic',
   inactiu_recent: 'Inactiu Recent', inactiu_total: 'Inactiu Total',
-  fugat: 'Fugat',
 }
 const URGENCIES = ['critica', 'alta', 'mitjana', 'baixa']
 
@@ -31,7 +30,6 @@ const LABEL_TIPUS: Record<string, string> = {
   anomalia_groga: 'Anomalia Groga', anomalia_vermella: 'Anomalia Vermella',
   monitoritzar: 'Monitoritzar',
   caiguda_volum: 'Caiguda Volum',
-  fugat: 'Fugat',
   geographical_alert: 'Alerta Geogràfica',
 }
 
