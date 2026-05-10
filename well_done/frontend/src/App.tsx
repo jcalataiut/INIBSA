@@ -144,10 +144,10 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
   },
   content: {
-    maxWidth: 1000,
+    maxWidth: 1200,
     width: '100%',
     margin: '0 auto',
-    padding: '0 32px 48px',
+    padding: '0 48px 64px',
     flex: 1,
   },
   headerSection: {

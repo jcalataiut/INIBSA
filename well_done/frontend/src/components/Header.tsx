@@ -52,9 +52,9 @@ const styles: Record<string, React.CSSProperties> = {
     zIndex: 100,
   },
   inner: {
-    maxWidth: 1400,
+    maxWidth: 1200,
     margin: '0 auto',
-    padding: '0 32px',
+    padding: '0 48px',
     height: 64,
     display: 'flex',
     alignItems: 'center',

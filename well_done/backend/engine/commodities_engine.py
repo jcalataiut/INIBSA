@@ -32,7 +32,7 @@ from backend.database import get_engine
 from backend.config import (
     EWM_HALF_LIFE,
     PROB_ANTICIPACIO,
-    PROB_REACTIVA,
+    MAX_ALERTS,
 )
 
 POTENCIAL_COL = "potencial_eur_anual"
@@ -228,9 +228,8 @@ def generate_alerts(cycles, sow, today, provincia_map=None):
             alert["z_score"] = 0.0
             alert["dies_stock"] = float(dies_per_proper)
 
-            urgencia_factor = 1.0 - (dies_per_proper / K)
             alert["prioritat"] = round(
-                alert["gap_eur"] * urgencia_factor * PROB_ANTICIPACIO, 2
+                alert["gap_eur"] * PROB_ANTICIPACIO, 2
             )
 
             alert["motiu"] = (
@@ -253,23 +252,23 @@ def generate_alerts(cycles, sow, today, provincia_map=None):
             alert["z_score"] = round(float(z_score), 2)
             alert["dies_stock"] = None
 
-            if retard_ratio >= 1.5:
+            if retard_ratio >= 3.0:
                 alert["urgencia"] = "critica"
                 alert["canal"] = "delegat"
-            elif retard_ratio >= 0.75:
+            elif retard_ratio >= 1.5:
                 alert["urgencia"] = "alta"
                 alert["canal"] = "delegat"
-            elif retard_ratio >= 0.25:
+            elif retard_ratio >= 0.5:
                 alert["urgencia"] = "mitjana"
                 alert["canal"] = "televenda"
             else:
                 alert["urgencia"] = "baixa"
                 alert["canal"] = "televenda"
 
-            urgencia_factor = min(1.0, retard_ratio)
             alert["tipus_alerta"] = "reactiva"
+            urgencia_score = {"critica": 4, "alta": 3, "mitjana": 2, "baixa": 1}.get(alert["urgencia"], 1)
             alert["prioritat"] = round(
-                alert["gap_eur"] * urgencia_factor * PROB_REACTIVA, 2
+                urgencia_score * 100000 + min(alert["gap_eur"], 99999), 2
             )
 
             alert["motiu"] = (
@@ -345,7 +344,7 @@ def generate_fugats(cycles, sow, today, provincia_map=None):
             "z_score": None,
             "proxim_pedido_esperat": None,
             "dies_stock": None,
-            "prioritat": round(float(row["gap_eur"]) * 0.1, 2),
+            "prioritat": round(float(row["gap_eur"]) * 0.01, 2),
             "motiu": (
                 f"Client FUGAT de {row['familia_potencial']}. "
                 f"Porta MÉS D'UN ANY sense comprar ({dies_sense} dies). "
@@ -422,7 +421,11 @@ def run(today=None, family=None, verbose=False):
             for tipus, count in alerts["tipus_alerta"].value_counts().items():
                 print(f"   {tipus:>15s}: {count}")
 
-    # ── 6. Generar alertes de fugats ────────────────────
+    # ── 6. Cap d'alertes (només les top MAX_ALERTS) ────
+    if len(alerts) > MAX_ALERTS:
+        alerts = alerts.head(MAX_ALERTS)
+
+    # ── 7. Generar alertes de fugats ────────────────────
     if verbose:
         print("👻 Generant llista de fugats (>365 dies)...", end=" ")
     fugats = generate_fugats(cycles, sow, today, prov_map)
@@ -433,7 +436,7 @@ def run(today=None, family=None, verbose=False):
     # Combinar: fugats van al final (baixa prioritat)
     alerts = pd.concat([alerts, fugats], ignore_index=True) if not fugats.empty else alerts
 
-    # ── 7. Top alertes ───────────────────────────────────
+    # ── 8. Top alertes ───────────────────────────────────
     actives = alerts[alerts["tipus_alerta"] != "fugat"] if len(alerts) > 0 else pd.DataFrame()
     if verbose and len(actives) > 0:
         print(f"\n{'─' * 60}")
@@ -446,7 +449,7 @@ def run(today=None, family=None, verbose=False):
             print(f"   Pròxim pedido: {a['proxim_pedido_esperat']}  |  Cicle: {a['cicle_mig_dies']:.0f}d")
             print(f"   {a['motiu'][:130]}")
 
-    # ── 8. Resum ─────────────────────────────────────────
+    # ── 9. Resum ─────────────────────────────────────────
     if verbose:
         gap_total = alerts["gap_eur"].sum() if len(alerts) > 0 else 0
         n_actius = alerts[alerts["tipus_alerta"] != "fugat"]["id_cliente"].nunique() if len(alerts) > 0 else 0
