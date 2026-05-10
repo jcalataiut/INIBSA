@@ -60,6 +60,20 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
     maxValor = Math.max(...purchases.map(p => p.valor), 1)
   }
 
+  // ── EWM (exponentially weighted) ─────────────────────
+  function ewmStats(gaps: number[], halfLife = 4): { mean: number; std: number } {
+    const n = gaps.length
+    if (n === 0) return { mean: 0, std: 0 }
+    const lam = Math.LN2 / Math.max(halfLife, 0.1)
+    const weights = Array.from({ length: n }, (_, i) => Math.exp(lam * i))
+    const wSum = weights.reduce((a, b) => a + b, 0)
+    const normW = weights.map(w => w / wSum)
+    const mean = normW.reduce((s, w, i) => s + w * gaps[i], 0)
+    const variance = normW.reduce((s, w, i) => s + w * (gaps[i] - mean) ** 2, 0)
+    const std = Math.sqrt(variance)
+    return { mean, std: std > 0 ? std : mean * 0.3 }
+  }
+
   // ── Prediction zones ───────────────────────────────────
   const cicle = alert.cicle_mig_dies || 0
   const cicleStd = alert.cicle_std_dies || (cicle * 0.3)
@@ -73,12 +87,28 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
   // Només tenim en compte les compres fetes fins a l'"avui" simulat
   const visiblePurchases = purchases.filter(p => p.day <= hojeDay)
   const lastPurchaseDay = visiblePurchases.length > 0 ? visiblePurchases[visiblePurchases.length - 1].day : hojeDay
+
+  // Recalcular cicle EWM amb les dades disponibles fins al dia simulat
+  let simCicle = cicle
+  let simCicleStd = cicleStd
+  if (simDay !== null && visiblePurchases.length >= 2) {
+    const gaps: number[] = []
+    for (let i = 1; i < visiblePurchases.length; i++) {
+      gaps.push(visiblePurchases[i].day - visiblePurchases[i - 1].day)
+    }
+    if (gaps.length > 0) {
+      const stats = ewmStats(gaps)
+      simCicle = Math.max(stats.mean, 1)
+      simCicleStd = Math.max(stats.std, simCicle * 0.05)
+    }
+  }
+
   const diesSenseSimulats = hojeDay - lastPurchaseDay
 
-  const properDay = lastPurchaseDay + cicle
-  const low = properDay - 0.5 * cicleStd
-  const high = properDay + 0.5 * cicleStd
-  const riskHigh = properDay + 1.5 * cicleStd
+  const properDay = lastPurchaseDay + simCicle
+  const low = properDay - 0.5 * simCicleStd
+  const high = properDay + 0.5 * simCicleStd
+  const riskHigh = properDay + 1.5 * simCicleStd
 
   // ── Chart dimensions ───────────────────────────────────
   const W = 800
@@ -246,7 +276,7 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
         </span>
         <span style={styles.mDiv}>|</span>
         <span style={styles.metric}>
-          {cicle > 0 ? `${cicle.toFixed(0)}d` : '-'} <span style={styles.mLabel}>cicle{cicleStd > 0 ? ` ±${cicleStd.toFixed(0)}` : ''}</span>
+          {simCicle > 0 ? `${simCicle.toFixed(0)}d` : '-'} <span style={styles.mLabel}>cicle{simCicleStd > 0 ? ` ±${simCicleStd.toFixed(0)}` : ''}</span>
         </span>
       </div>
     </div>
