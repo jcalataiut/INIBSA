@@ -65,7 +65,6 @@ def get_share_trend(client_id: int, familia: str):
                 FROM ventas
                 WHERE id_cliente = :id
                   AND familia_potencial = :fam
-                  AND es_commodity = true
                 GROUP BY DATE_TRUNC('month', fecha)
                 ORDER BY mes
             """),
@@ -81,10 +80,12 @@ def get_share_trend(client_id: int, familia: str):
         if potencial <= 0:
             return {"mesos": [], "potencial": 0}
 
-        # Reindexar a tots els mesos del calendari
+        # Reindexar a tots els mesos fins a avui per mostrar la degradació del share
         df["mes"] = pd.to_datetime(df["mes"])
         df = df.set_index("mes")
-        all_months = pd.date_range(df.index.min(), df.index.max(), freq="MS")
+        today = pd.Timestamp.now().normalize().replace(day=1)
+        end_date = max(df.index.max(), today)
+        all_months = pd.date_range(df.index.min(), end_date, freq="MS")
         df = df.reindex(all_months)
         df["euros"] = df["euros"].fillna(0)
 

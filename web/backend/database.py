@@ -230,19 +230,16 @@ def ensure_cache(today_str: str, family: str | None = None, force: bool = False)
     if alerts_df.empty:
         return
 
-    # ── Poblar segment_anterior ──────────────────────────────
+    # ── Poblar segment_anterior (només per alertes no-SoW) ──
+    # Les alertes sow_* ja tenen segment_anterior correcte (comparació mes a mes)
     if prev_segments:
-        def _lookup_anterior(row):
-            key = (int(row["id_cliente"]), str(row["familia_potencial"]))
-            old = prev_segments.get(key)
-            if old is not None and old != row.get("segment"):
-                return old
-            return None
-        
         with engine.begin() as conn:
             for _, row in alerts_df.iterrows():
-                ant = _lookup_anterior(row)
-                if ant is not None:
+                if row.get("tipus_alerta", "").startswith("sow_"):
+                    continue
+                key = (int(row["id_cliente"]), str(row["familia_potencial"]))
+                ant = prev_segments.get(key)
+                if ant is not None and ant != row.get("segment"):
                     conn.execute(
                         text("UPDATE alertes_cache SET segment_anterior = :ant WHERE id_cliente = :idc AND familia_potencial = :fam AND data_alerta = :today"),
                         {"ant": ant, "idc": int(row["id_cliente"]), "fam": str(row["familia_potencial"]), "today": today_str}

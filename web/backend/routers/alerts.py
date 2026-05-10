@@ -65,6 +65,7 @@ def get_alerts(
           WHEN 'baixa' THEN 1
           ELSE 0
         END DESC,
+        CASE WHEN tipus_alerta LIKE 'sow_%' THEN 1 ELSE 0 END DESC,
         gap_eur DESC NULLS LAST
     """
 
@@ -79,6 +80,7 @@ def get_alerts(
             provincia=row.get("provincia") or "",
             familia_potencial=row["familia_potencial"],
             segment=row["segment"],
+            segment_anterior=row.get("segment_anterior"),
             tipus_alerta=row["tipus_alerta"],
             urgencia=row["urgencia"],
             canal=row["canal"],
