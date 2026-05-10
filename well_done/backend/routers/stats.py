@@ -33,7 +33,7 @@ def get_stats(today: str = Query(default_factory=today_str)):
         ).scalar() or 0
 
         alta_urgencia = conn.execute(
-            text("SELECT COUNT(*) FROM alertes_cache WHERE data_alerta = :today AND urgencia = 'alta'"),
+            text("SELECT COUNT(*) FROM alertes_cache WHERE data_alerta = :today AND urgencia IN ('alta', 'critica')"),
             {"today": today_str}
         ).scalar() or 0
 

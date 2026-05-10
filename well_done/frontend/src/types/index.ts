@@ -45,12 +45,8 @@ export interface TreatedAlert {
 }
 
 export const SEGMENT_COLORS: Record<string, string> = {
-  fidel: '#00B8A9',
-  promiscu: '#F4A261',
-  marginal: '#6B7280',
-  en_risc: '#E76F51',
-  nou: '#3498DB',
-  perdut: '#6B7280',
+  amb_historial: '#00B8A9',
+  sense_historial: '#6B7280',
   fugat: '#E74C3C',
 }
 
@@ -63,14 +59,7 @@ export interface ClientDetail {
 }
 
 export const ALERTA_LABELS: Record<string, string> = {
-  finestra_captura: 'Finestra Captura',
-  risc_fuga: 'Risc de Fuga',
-  reposicio_endarrerida: 'Rep. Endarrerida',
-  reposicio_preventiva: 'Rep. Preventiva',
-  reposicio_pendent: 'Rep. Pendent',
-  oportunitat_captura: 'Oport. Captura',
-  monitoritzar: 'Monitoritzar',
-  info: 'Info',
+  anticipacio: 'Anticipació',
+  reactiva: 'Reactiva',
   fugat: 'Fugat',
-  perdut: 'Perdut',
 }

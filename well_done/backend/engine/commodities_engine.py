@@ -1,18 +1,50 @@
+"""
+Motor de Predicció i Alertes — Commodities (Anestèsia + Bioseguretat)
+======================================================================
+
+QUÈ FA:
+  Per cada (client, família) de productes commodity:
+    1. Calcula el cicle de reposició (dies entre pedidos consecutius)
+    2. Prediu la data del proper pedido
+    3. Genera dos tipus d'alerta:
+       - ANTICIPACIÓ: avui és dins de K dies ABANS de la data prevista
+         (alerta baixa/soft: "ei, aquests haurien de demanar aviat")
+       - REACTIVA: avui és DESPRÉS de la data prevista
+         (alerta greu: "ja hauria d'haver comprat i no ha comprat")
+         La urgència escala amb els dies de retard.
+
+BASAT EN:
+  smart_demand_signals.ipynb — només la part de predicció (sense KMeans)
+
+COM S'USA:
+    from backend.engine.commodities_engine import run
+    alerts, segments = run(today="2025-12-01")
+
+OUTPUT:
+    DataFrame amb alertes prioritzades, compatible amb alertes_cache.
+"""
+
 import pandas as pd
 import numpy as np
 from datetime import datetime
 from sqlalchemy import text
 from backend.database import get_engine
 from backend.config import (
-    SHARE_FIDEL_THR, SHARE_MARGINAL_THR, DIES_FUGAT_THR, DIES_NOU_THR,
-    DIES_HISTORIAL_MIN, RATIO_EN_RISC, NUM_INTERVALS_MIN,
-    LLINDAR_GROC_STD, LLINDAR_TARONJA_STD, LLINDAR_VERMELL_STD,
-    FINESTRA_CAPTURA_PCT, FINESTRA_CAPTURA_MIN, FINESTRA_CAPTURA_MAX,
+    K_ANTICIPACIO_DIES,
+    PROB_ANTICIPACIO,
+    PROB_REACTIVA,
 )
 
 POTENCIAL_COL = "potencial_eur_anual"
+DIES_FUGAT_THR = 365
+
 
 def load_data(today=None):
+    """Carrega les vendes de commodities (es_commodity = TRUE) des de PostgreSQL.
+
+    Si today es proporciona, filtra només vendes fins a essa data.
+    Exclou devolucions (es_devolucion == 0).
+    """
     engine = get_engine()
     query = "SELECT * FROM ventas WHERE es_commodity = TRUE"
     params = {}
@@ -25,42 +57,18 @@ def load_data(today=None):
     df[POTENCIAL_COL] = pd.to_numeric(df[POTENCIAL_COL], errors="coerce")
     return df
 
-def build_monthly_aggregate(df):
-    df["any_mes"] = df["fecha"].dt.to_period("M")
-    agg = df.groupby(
-        ["id_cliente", "familia_potencial", "any_mes"],
-        as_index=False
-    ).agg(
-        euros_venuts=("valores_h", "sum"),
-        num_pedidos=("num_fact", "nunique"),
-        unitats=("unidades", "sum"),
-        en_campana=("en_campana", "max"),
-    )
-    agg["anyo"] = agg["any_mes"].dt.year
-    agg["mes"] = agg["any_mes"].dt.month
-    return agg
-
-def calc_rolling_share(monthly):
-    monthly = monthly.sort_values(["id_cliente", "familia_potencial", "any_mes"])
-    monthly["euros_12m"] = (
-        monthly.groupby(["id_cliente", "familia_potencial"])["euros_venuts"]
-        .transform(lambda s: s.rolling(12, min_periods=1).sum())
-    )
-    monthly["euros_3m"] = (
-        monthly.groupby(["id_cliente", "familia_potencial"])["euros_venuts"]
-        .transform(lambda s: s.rolling(3, min_periods=1).sum())
-    )
-    return monthly
-
-def attach_potencial(monthly, raw_df):
-    potencial = raw_df[["id_cliente", "familia_potencial", POTENCIAL_COL]].drop_duplicates()
-    monthly = monthly.merge(potencial, on=["id_cliente", "familia_potencial"], how="left")
-    monthly["share_12m"] = (monthly["euros_12m"] / monthly[POTENCIAL_COL]).clip(0, 1)
-    monthly["share_3m_annualized"] = ((monthly["euros_3m"] * 4) / monthly[POTENCIAL_COL]).clip(0, 1)
-    monthly["gap_eur"] = (monthly[POTENCIAL_COL] - monthly["euros_12m"]).clip(lower=0)
-    return monthly
 
 def calc_restock_cycle(df):
+    """Calcula el cicle de reposició per (client, família).
+
+    Per cada parella:
+      - cicle_mig_dies: interval mitjà entre pedidos consecutius
+      - cicle_std_dies: desviació estàndard dels intervals
+      - num_intervals: nombre d'intervals (fiabilitat del càlcul)
+      - data_ultim_pedido: data del darrer pedido
+
+    Exclou vendes en campanya per no distorsionar el cicle real.
+    """
     facturas = df[df["en_campana"] == 0][
         ["id_cliente", "familia_potencial", "num_fact", "fecha"]
     ].drop_duplicates().sort_values(["id_cliente", "familia_potencial", "fecha"])
@@ -74,7 +82,6 @@ def calc_restock_cycle(df):
                 "cicle_mig_dies": np.nan, "cicle_std_dies": np.nan,
                 "num_intervals": 0,
                 "data_ultim_pedido": dates[-1] if len(dates) else pd.NaT,
-                "data_primer_pedido": dates[0] if len(dates) else pd.NaT,
             })
         else:
             diffs = np.diff(dates.astype("datetime64[D]")).astype(float)
@@ -82,388 +89,172 @@ def calc_restock_cycle(df):
                 "id_cliente": cli, "familia_potencial": fam,
                 "cicle_mig_dies": diffs.mean(), "cicle_std_dies": diffs.std(),
                 "num_intervals": len(diffs),
-                "data_ultim_pedido": dates[-1], "data_primer_pedido": dates[0],
+                "data_ultim_pedido": dates[-1],
             })
 
     cycles = pd.DataFrame(records)
     cycles["data_ultim_pedido"] = pd.to_datetime(cycles["data_ultim_pedido"])
-    cycles["data_primer_pedido"] = pd.to_datetime(cycles["data_primer_pedido"])
     return cycles
 
-def _is_perdut(row):
-    dies_sense = row["dies_sense_compra"]
-    dies_hist = row["dies_historial"]
-    cicle = row.get("cicle_mig_dies")
-    n_int = row.get("num_intervals", 0)
-    if dies_hist < DIES_HISTORIAL_MIN:
-        return False
-    if pd.isna(cicle) or n_int == 0 or pd.isna(dies_sense):
-        return dies_sense > 180 if not pd.isna(dies_sense) else True
-    if n_int <= 2:
-        return dies_sense > max(365, cicle * 3)
-    return dies_sense > max(180, cicle * 2.5)
 
-def _is_fugat(row):
-    dies_sense = row["dies_sense_compra"]
-    dies_hist = row["dies_historial"]
-    if pd.isna(dies_sense) or dies_sense == 999:
-        return True
-    return dies_sense > DIES_FUGAT_THR and dies_hist > DIES_HISTORIAL_MIN
+def calc_sow_and_gap(df, today):
+    """Calcula share of wallet (últims 12m) i gap econòmic per (client, família).
 
-def segment_client(row):
-    dies_hist = row["dies_historial"]
-    share_12m = row["share_12m"]
-    tendencia = row.get("tendencia_negativa", False)
-
-    if dies_hist < DIES_NOU_THR:
-        return "nou"
-    if _is_fugat(row):
-        return "fugat"
-    if _is_perdut(row):
-        return "perdut"
-    if tendencia and share_12m > SHARE_MARGINAL_THR:
-        return "en_risc"
-    if share_12m >= SHARE_FIDEL_THR:
-        return "fidel"
-    if share_12m >= SHARE_MARGINAL_THR:
-        return "promiscu"
-    return "marginal"
-
-def segment_all(monthly, cycles, today):
+    share_12m = euros_12m / potencial_eur  (capped at 100%)
+    gap_eur   = potencial_eur - euros_12m  (euros no capturats)
+    """
     today_ts = pd.Timestamp(today)
-    latest = monthly.loc[
-        monthly.groupby(["id_cliente", "familia_potencial"])["any_mes"].idxmax()
-    ].copy()
-    latest = latest.merge(cycles, on=["id_cliente", "familia_potencial"], how="left")
-    latest["data_ultim_pedido"] = pd.to_datetime(latest["data_ultim_pedido"])
-    latest["data_primer_pedido"] = pd.to_datetime(latest["data_primer_pedido"])
-    latest["dies_sense_compra"] = (today_ts - latest["data_ultim_pedido"]).dt.days.fillna(999).astype(int)
-    latest["dies_historial"] = (today_ts - latest["data_primer_pedido"]).dt.days.fillna(0).astype(int)
-    latest["finestra_recent_mesos"] = latest["cicle_mig_dies"].apply(
-        lambda c: 12 if (pd.notna(c) and c > 120) else (
-            6 if (pd.notna(c) and c > 60) else 3
-        )
-    )
-    latest["tendencia_negativa"] = (
-        (latest["finestra_recent_mesos"] <= 6)
-        & (latest["share_3m_annualized"] < latest["share_12m"] * RATIO_EN_RISC)
-        & (latest["num_intervals"] >= NUM_INTERVALS_MIN)
-    )
-    latest["segment"] = latest.apply(segment_client, axis=1)
+    cutoff = today_ts - pd.DateOffset(months=12)
 
-    segment_prev_map = {
-        "en_risc": latest["share_12m"].apply(
-            lambda s: "fidel" if s >= SHARE_FIDEL_THR else (
-                "promiscu" if s >= SHARE_MARGINAL_THR else "marginal"
-            )
-        )
-    }
-    for seg, prev in segment_prev_map.items():
-        latest.loc[latest["segment"] == seg, "segment_anterior"] = prev
+    # (client, família) + potencial
+    client_data = df[["id_cliente", "familia_potencial", POTENCIAL_COL]].drop_duplicates()
 
-    return latest
+    # Vendes dels últims 12 mesos (sense devolucions)
+    valid = df[(df["fecha"] >= cutoff) & (df["es_devolucion"] == 0)]
 
-def generate_alerts(segments, today, provincia_map=None):
+    sales_12m = valid.groupby(["id_cliente", "familia_potencial"])["valores_h"].sum().reset_index()
+    sales_12m = sales_12m.rename(columns={"valores_h": "euros_12m"})
+
+    sow = client_data.merge(sales_12m, on=["id_cliente", "familia_potencial"], how="left")
+    sow["euros_12m"] = sow["euros_12m"].fillna(0)
+    sow = sow.rename(columns={POTENCIAL_COL: "potencial_eur"})
+
+    sow["share_12m"] = (sow["euros_12m"] / sow["potencial_eur"]).clip(0, 1)
+    sow["gap_eur"] = (sow["potencial_eur"] - sow["euros_12m"]).clip(lower=0)
+
+    return sow
+
+
+def generate_alerts(cycles, sow, today, provincia_map=None):
+    """Genera alertes d'ANTICIPACIÓ i REACTIVA basades en la predicció de compra.
+
+    Per cada (client, família) amb cicle calculat:
+      1. proper_pedido_esperat = data_ultim_pedido + cicle_mig_dies
+      2. dies_per_proper = (proper_pedido_esperat - today).days
+         (positiu = futur, negatiu = passat)
+
+    ANTICIPACIÓ (0 < dies_per_proper <= K):
+      - Alerta soft: "aquest client hauria de demanar aviat"
+      - Prioritat: més alta com més a prop de la data prevista
+
+    REACTIVA (dies_per_proper <= 0):
+      - Alerta greu: "ja hauria d'haver comprat i no ho ha fet"
+      - Prioritat: escala amb els dies de retard respecte al cicle
+      - Urgència: baixa→mitjana→alta→crítica segons retard_ratio
+    """
     today_ts = pd.Timestamp(today)
+    K = K_ANTICIPACIO_DIES
     alerts = []
 
-    PROB_CONVERSIO = {
-        "fidel": 0.8, "promiscu": 0.6, "marginal": 0.2,
-        "en_risc": 0.9, "perdut": 0.05, "fugat": 0.15, "nou": 0.4,
-    }
+    data = cycles.merge(sow, on=["id_cliente", "familia_potencial"], how="left")
+    data["euros_12m"] = data["euros_12m"].fillna(0)
+    data["share_12m"] = data["share_12m"].fillna(0)
+    data["gap_eur"] = data["gap_eur"].fillna(0)
+    data["potencial_eur"] = data["potencial_eur"].fillna(0)
 
-    def calc_prioritat(gap, dies_retard, cicle_mig, prob, dies_stock=None):
-        if cicle_mig and cicle_mig > 0 and not pd.isna(cicle_mig):
-            cicle_segur = max(14, cicle_mig)
-            urgencia_retard = max(0.1, min(1.0, dies_retard / cicle_segur))
-        else:
-            urgencia_retard = 0.5
-        urgencia_stock = 0
-        if dies_stock is not None and dies_stock < 14:
-            urgencia_stock = max(0, 1 - dies_stock / 14)
-        return round(gap * max(urgencia_retard, urgencia_stock) * prob, 2)
+    for _, row in data.iterrows():
+        if pd.isna(row["cicle_mig_dies"]) or row["num_intervals"] < 1:
+            continue
 
-    for _, row in segments.iterrows():
+        cicle = row["cicle_mig_dies"]
+        cicle_std = row["cicle_std_dies"] if (
+            not pd.isna(row["cicle_std_dies"]) and row["cicle_std_dies"] > 0
+        ) else cicle * 0.30
+
+        # Predicció: proper pedido
+        proper_pedido = row["data_ultim_pedido"] + pd.Timedelta(days=cicle)
+        dies_per_proper = (proper_pedido - today_ts).days
+
+        dies_sense = int((today_ts - row["data_ultim_pedido"]).days)
+
+        # Fugats (no surten al briefing): >365 dies sense comprar O share = 0%
+        if dies_sense > DIES_FUGAT_THR or row["share_12m"] < 0.01:
+            continue
+
+        # Base comuna de l'alerta
         alert = {
-            "id_cliente": row["id_cliente"],
+            "id_cliente": int(row["id_cliente"]),
             "provincia": provincia_map.get(row["id_cliente"], "") if provincia_map else "",
             "familia_potencial": row["familia_potencial"],
-            "segment": row["segment"],
-            "segment_anterior": row.get("segment_anterior", ""),
-            "share_12m": round(row["share_12m"], 3),
-            "potencial_anual_eur": round(row[POTENCIAL_COL], 2),
-            "euros_12m": round(row["euros_12m"], 2),
-            "gap_eur": round(row["gap_eur"], 2),
-            "dies_sense_compra": int(row["dies_sense_compra"]) if pd.notna(row["dies_sense_compra"]) else 999,
-            "num_intervals": int(row["num_intervals"]) if pd.notna(row["num_intervals"]) else 0,
+            "segment": "amb_historial",
+            "segment_anterior": None,
+            "share_12m": round(float(row["share_12m"]), 3),
+            "potencial_anual_eur": round(float(row["potencial_eur"]), 2),
+            "euros_12m": round(float(row["euros_12m"]), 2),
+            "gap_eur": round(float(row["gap_eur"]), 2),
+            "dies_sense_compra": dies_sense,
+            "num_intervals": int(row["num_intervals"]),
+            "cicle_mig_dies": round(float(cicle), 1),
+            "cicle_std_dies": round(float(cicle_std), 1),
+            "proxim_pedido_esperat": proper_pedido.strftime("%Y-%m-%d"),
             "data_alerta": today,
         }
 
-        cicle_mig = row["cicle_mig_dies"]
-        cicle_std = row["cicle_std_dies"]
-        dies_sense = row["dies_sense_compra"]
-        segment = row["segment"]
-
-        if segment == "fugat":
-            alert["tipus_alerta"] = "fugat"
-            alert["urgencia"] = "mitjana"
-            alert["canal"] = "delegat"
-            if cicle_mig and not pd.isna(cicle_mig):
-                alert["cicle_mig_dies"] = round(cicle_mig, 1)
-                alert["dies_retard"] = int(max(0, dies_sense - cicle_mig))
-            else:
-                alert["cicle_mig_dies"] = None
-                alert["dies_retard"] = dies_sense
-            impacte = max(alert["gap_eur"], row[POTENCIAL_COL] * 0.8)
-            alert["prioritat"] = calc_prioritat(
-                impacte, alert["dies_retard"],
-                cicle_mig if (cicle_mig and not pd.isna(cicle_mig)) else None,
-                PROB_CONVERSIO["fugat"]
-            )
-            alert["cicle_std_dies"] = None
-            alert["z_score"] = None
-            alert["proxim_pedido_esperat"] = None
-            alert["dies_stock"] = None
-            alert["motiu"] = (
-                f"Client FUGAT. Porta MÉS D'UN ANY sense comprar "
-                f"({dies_sense} dies). Historial previ de {row['dies_historial']:.0f} dies. "
-                f"Requereix recuperació directa per delegat. "
-                f"Gap potencial: {impacte:,.0f}€/any."
-            )
-            alerts.append(alert)
-            continue
-
-        if segment == "perdut":
-            impacte = max(alert["gap_eur"], row[POTENCIAL_COL] * 0.5)
-            if impacte < 200:
-                continue
-            alert["tipus_alerta"] = "perdut"
+        # ═══════════════════════════════════════════════
+        # ANTICIPACIÓ — alerta abans de la data prevista
+        # ═══════════════════════════════════════════════
+        if 0 < dies_per_proper <= K:
+            alert["tipus_alerta"] = "anticipacio"
             alert["urgencia"] = "baixa"
             alert["canal"] = "televenda"
-            if cicle_mig and not pd.isna(cicle_mig):
-                alert["cicle_mig_dies"] = round(cicle_mig, 1)
-                alert["dies_retard"] = int(max(0, dies_sense - cicle_mig))
-            else:
-                alert["cicle_mig_dies"] = None
-                alert["dies_retard"] = dies_sense
-            alert["cicle_std_dies"] = None
-            alert["z_score"] = None
-            alert["proxim_pedido_esperat"] = None
-            alert["dies_stock"] = None
-            alert["prioritat"] = calc_prioritat(
-                impacte, alert["dies_retard"],
-                cicle_mig if (cicle_mig and not pd.isna(cicle_mig)) else None,
-                PROB_CONVERSIO["perdut"]
-            )
-            alert["motiu"] = (
-                f"Client sense comprar des de fa {dies_sense} dies. "
-                f"Historial previ de {row['dies_historial']:.0f} dies. "
-                f"Possible pèrdua de compte. Requereix trucada de reactivació."
-            )
-            alerts.append(alert)
-            continue
-
-        if segment == "nou":
-            alert["tipus_alerta"] = "monitoritzar"
-            alert["urgencia"] = "baixa"
-            alert["canal"] = "televenda"
-            alert["cicle_mig_dies"] = round(cicle_mig, 1) if (cicle_mig and not pd.isna(cicle_mig)) else None
-            alert["cicle_std_dies"] = None
-            alert["z_score"] = None
-            alert["proxim_pedido_esperat"] = None
-            alert["dies_stock"] = None
             alert["dies_retard"] = 0
-            alert["prioritat"] = calc_prioritat(alert["gap_eur"], 0, None, PROB_CONVERSIO["nou"])
+            alert["z_score"] = 0.0
+            alert["dies_stock"] = float(dies_per_proper)
+
+            urgencia_factor = 1.0 - (dies_per_proper / K)
+            alert["prioritat"] = round(
+                alert["gap_eur"] * urgencia_factor * PROB_ANTICIPACIO, 2
+            )
+
             alert["motiu"] = (
-                f"Client NOU ({row['dies_historial']:.0f} dies d'historial). "
-                f"Primers pedidos registrats. Fer seguiment de consolidació "
-                f"per assegurar fidelització."
+                f"Client amb historial de {row['familia_potencial']}. "
+                f"Proper pedido esperat en {dies_per_proper:.0f} dies "
+                f"(cicle habitual: {cicle:.0f} dies ±{cicle_std:.0f}). "
+                f"ANTICIPACIÓ: contactar per avançar-se a la compra."
             )
             alerts.append(alert)
-            continue
 
-        if segment == "en_risc":
-            retard = 0
-            z_score = 0
-            if cicle_mig and not pd.isna(cicle_mig):
-                proper = row["data_ultim_pedido"] + pd.Timedelta(days=cicle_mig)
-                retard = max(0, (today_ts - proper).days)
-                z_score = retard / cicle_std if (cicle_std and cicle_std > 0) else 0
+        # ═══════════════════════════════════════════════
+        # REACTIVA — alerta després de la data prevista
+        # ═══════════════════════════════════════════════
+        elif dies_per_proper <= 0:
+            dies_retard = abs(dies_per_proper)
+            z_score = dies_retard / cicle_std if cicle_std > 0 else 0.0
+            retard_ratio = dies_retard / max(cicle, 1.0)
 
-            alert["tipus_alerta"] = "risc_fuga"
-            alert["dies_retard"] = int(retard)
-            alert["z_score"] = round(z_score, 2)
-            alert["cicle_mig_dies"] = round(cicle_mig, 1) if (cicle_mig and not pd.isna(cicle_mig)) else None
-            alert["cicle_std_dies"] = round(cicle_std, 1) if (cicle_std and not pd.isna(cicle_std)) else None
-            alert["proxim_pedido_esperat"] = None
+            alert["dies_retard"] = int(dies_retard)
+            alert["z_score"] = round(float(z_score), 2)
             alert["dies_stock"] = None
-            alert["prioritat"] = calc_prioritat(
-                alert["gap_eur"], retard,
-                cicle_mig if (cicle_mig and not pd.isna(cicle_mig)) else None,
-                PROB_CONVERSIO["en_risc"]
-            )
-            share_3m = row["share_3m_annualized"]
-            share_12m = row["share_12m"]
-            canvi_pct = (share_3m - share_12m) / share_12m * 100 if share_12m > 0 else 0
-            alert["urgencia"] = "alta" if canvi_pct < -30 else "mitjana"
-            alert["canal"] = "delegat" if alert["urgencia"] == "alta" else "televenda"
-            alert["motiu"] = (
-                f"Client en RISC de fuga ({row.get('segment_anterior', 'actiu')}). "
-                f"Share 12m: {share_12m:.0%} → Share últims 3m anualitzat: {share_3m:.0%} "
-                f"({canvi_pct:+.0f}%). "
-                f"Gap: {alert['gap_eur']:.0f}€/any. "
-                f"Tendència negativa clara. Intervenir amb urgència."
-            )
-            alerts.append(alert)
-            continue
 
-        if cicle_mig is None or pd.isna(cicle_mig):
-            if segment in ("fidel", "promiscu"):
-                alert["tipus_alerta"] = "info"
-                alert["urgencia"] = "baixa"
-                alert["canal"] = "televenda"
-                alert["cicle_mig_dies"] = None
-                alert["cicle_std_dies"] = None
-                alert["z_score"] = None
-                alert["proxim_pedido_esperat"] = None
-                alert["dies_stock"] = None
-                alert["dies_retard"] = 0
-                alert["prioritat"] = calc_prioritat(alert["gap_eur"], 0, None, PROB_CONVERSIO[segment])
-                alert["motiu"] = (
-                    f"Client {segment.upper()}. Sense dades suficients per "
-                    f"calcular cicle de reposició. Contacte proactiu recomanat."
-                )
-                alerts.append(alert)
-            elif segment == "marginal":
-                alert["tipus_alerta"] = "oportunitat_captura"
-                alert["urgencia"] = "baixa"
-                alert["canal"] = "televenda"
-                alert["cicle_mig_dies"] = None
-                alert["cicle_std_dies"] = None
-                alert["z_score"] = None
-                alert["proxim_pedido_esperat"] = None
-                alert["dies_stock"] = None
-                alert["dies_retard"] = 0
-                alert["prioritat"] = calc_prioritat(alert["gap_eur"], 0, None, PROB_CONVERSIO["marginal"])
-                alert["motiu"] = (
-                    f"Client MARGINAL ({row['share_12m']:.0%} share). "
-                    f"Gap de captura: {alert['gap_eur']:.0f}€/any. "
-                    f"Baixa vinculació amb Inibsa. Cal investigar."
-                )
-                alerts.append(alert)
-            continue
-
-        proper_pedido = row["data_ultim_pedido"] + pd.Timedelta(days=cicle_mig)
-        dies_retard = max(0, (today_ts - proper_pedido).days)
-        z_score = dies_retard / cicle_std if (cicle_std and cicle_std > 0) else 0
-
-        alert["dies_retard"] = int(dies_retard)
-        alert["z_score"] = round(z_score, 2)
-        alert["cicle_mig_dies"] = round(cicle_mig, 1)
-        alert["cicle_std_dies"] = round(cicle_std, 1) if (cicle_std and not pd.isna(cicle_std)) else None
-        alert["proxim_pedido_esperat"] = proper_pedido.strftime("%Y-%m-%d")
-
-        alert["dies_stock"] = None
-        if segment == "fidel" and cicle_mig and not pd.isna(cicle_mig):
-            dies_per_proper = max(0, (proper_pedido - today_ts).days)
-            alert["dies_stock"] = round(dies_per_proper, 1)
-
-        dies_stock = alert["dies_stock"]
-
-        if segment == "fidel":
-            if dies_retard == 0 and dies_stock is not None and dies_stock < 7:
-                alert["tipus_alerta"] = "reposicio_preventiva"
-                alert["dies_stock"] = float(f"{dies_stock:.0f}")
-                if dies_stock < 3:
-                    alert["urgencia"] = "alta"
-                    alert["canal"] = "delegat"
-                else:
-                    alert["urgencia"] = "baixa"
-                    alert["canal"] = "televenda"
-                alert["prioritat"] = calc_prioritat(
-                    alert["gap_eur"], dies_retard, cicle_mig, PROB_CONVERSIO["fidel"],
-                    dies_stock=dies_stock
-                )
-                alert["motiu"] = (
-                    f"Client FIDEL d'{row['familia_potencial']}. "
-                    f"Proper pedido estimat dins de {dies_stock:.0f} dies "
-                    f"(cicle habitual: {cicle_mig:.0f} dies). "
-                    f"Stock estimat proper a l'esgotament. "
-                    f"Contactar per anticipar reposició."
-                )
-                alerts.append(alert)
-                continue
-
-            if dies_retard > 0:
-                if z_score >= LLINDAR_VERMELL_STD:
-                    alert["tipus_alerta"] = "risc_fuga"
-                    alert["urgencia"] = "alta"
-                    alert["canal"] = "delegat"
-                    alert["motiu"] = (
-                        f"Client FIDEL d'{row['familia_potencial']} amb risc de FUGA. "
-                        f"Cicle habitual: {cicle_mig:.0f} dies. Porta {dies_sense} dies "
-                        f"sense comprar ({dies_retard} dies de retard, z={z_score:.1f}). "
-                        + (f"Stock exhaurit. " if dies_stock is not None and dies_stock <= 0 else "")
-                        + f"Prioritat màxima."
-                    )
-                elif z_score >= LLINDAR_TARONJA_STD:
-                    alert["tipus_alerta"] = "reposicio_endarrerida"
-                    alert["urgencia"] = "mitjana"
-                    alert["canal"] = "televenda"
-                    alert["motiu"] = (
-                        f"Client FIDEL d'{row['familia_potencial']} amb reposició endarrerida. "
-                        f"Cicle habitual: {cicle_mig:.0f} dies. Retard de {dies_retard} dies "
-                        f"(z={z_score:.1f}). "
-                        + (f"Proper pedido esperat fa {dies_retard} dies. " if dies_stock is not None else "")
-                        + f"Contactar per confirmar estat."
-                    )
-                else:
-                    alert["tipus_alerta"] = "reposicio_pendent"
-                    alert["urgencia"] = "baixa"
-                    alert["canal"] = "televenda"
-                    alert["motiu"] = (
-                        f"Client FIDEL d'{row['familia_potencial']} amb lleuger retard "
-                        f"({dies_retard} dies). Cicle habitual: {cicle_mig:.0f} dies. "
-                        + (f"Proper pedido: {dies_stock:.0f} dies enrere. " if dies_stock is not None else "")
-                        + f"Seguiment rutina."
-                    )
-                alert["prioritat"] = calc_prioritat(
-                    alert["gap_eur"], dies_retard, cicle_mig, PROB_CONVERSIO["fidel"],
-                    dies_stock=dies_stock
-                )
-                alerts.append(alert)
-
-        elif segment == "promiscu":
-            dies_restants = -dies_retard
-            finestra = max(FINESTRA_CAPTURA_MIN, min(FINESTRA_CAPTURA_MAX, round(cicle_mig * FINESTRA_CAPTURA_PCT)))
-            if abs(dies_restants) <= finestra or dies_retard > 0:
-                alert["tipus_alerta"] = "finestra_captura"
-                alert["urgencia"] = "alta" if dies_retard > 0 else "mitjana"
+            if retard_ratio >= 1.5:
+                alert["urgencia"] = "critica"
                 alert["canal"] = "delegat"
-                alert["prioritat"] = calc_prioritat(
-                    alert["gap_eur"], dies_retard, cicle_mig, PROB_CONVERSIO["promiscu"]
-                )
-                alert["motiu"] = (
-                    f"Client PROMISCU d'{row['familia_potencial']} en FINESTRA DE CAPTURA. "
-                    f"Cicle: {cicle_mig:.0f} dies. Share: {row['share_12m']:.0%}. "
-                    f"Gap: {alert['gap_eur']:.0f}€/any. "
-                    f"{'Retard en reposició urgent.' if dies_retard > 0 else 'Moment òptim per contactar.'}"
-                )
-                alerts.append(alert)
+            elif retard_ratio >= 0.75:
+                alert["urgencia"] = "alta"
+                alert["canal"] = "delegat"
+            elif retard_ratio >= 0.25:
+                alert["urgencia"] = "mitjana"
+                alert["canal"] = "televenda"
+            else:
+                alert["urgencia"] = "baixa"
+                alert["canal"] = "televenda"
 
-        elif segment == "marginal":
-            alert["tipus_alerta"] = "oportunitat_captura"
-            alert["urgencia"] = "baixa"
-            alert["canal"] = "televenda"
-            alert["dies_retard"] = 0
-            alert["z_score"] = 0
-            alert["prioritat"] = calc_prioritat(
-                alert["gap_eur"], 0, cicle_mig, PROB_CONVERSIO["marginal"]
+            urgencia_factor = min(1.0, retard_ratio)
+            alert["tipus_alerta"] = "reactiva"
+            alert["prioritat"] = round(
+                alert["gap_eur"] * urgencia_factor * PROB_REACTIVA, 2
             )
+
             alert["motiu"] = (
-                f"Client MARGINAL d'{row['familia_potencial']}. "
-                f"Share: {row['share_12m']:.0%}. Gap: {alert['gap_eur']:.0f}€/any. "
-                f"Baixa vinculació. Cal investigar."
+                f"Client de {row['familia_potencial']} que HAURIA D'HAVER COMPRAT. "
+                f"Pedido esperat fa {dies_retard:.0f} dies "
+                f"(cicle: {cicle:.0f} dies ±{cicle_std:.0f}). "
+                f"Porta {dies_sense} dies sense comprar. "
+                + (
+                    "Risc alt de pèrdua — intervenció urgent."
+                    if retard_ratio >= 1.0
+                    else "Cal reactivar contacte."
+                )
             )
             alerts.append(alert)
 
@@ -471,34 +262,177 @@ def generate_alerts(segments, today, provincia_map=None):
         return pd.DataFrame()
 
     alerts_df = pd.DataFrame(alerts)
-
-    alerts_df = alerts_df[~(
-        (alerts_df["dies_sense_compra"] > 730)
-        & (alerts_df["num_intervals"] <= 2)
-    )]
-
     if "prioritat" in alerts_df.columns:
         alerts_df = alerts_df.sort_values("prioritat", ascending=False).reset_index(drop=True)
     return alerts_df
 
+
+def generate_fugats(cycles, sow, today, provincia_map=None):
+    """Genera alertes per clients FUGATS (>365 dies sense comprar).
+
+    Aquests clients NO surten a la llista principal d'anticipacio/reactiva.
+    Van a un llistat separat per tenir-los controlats.
+    """
+    today_ts = pd.Timestamp(today)
+    alerts = []
+
+    data = cycles.merge(sow, on=["id_cliente", "familia_potencial"], how="left")
+    data["euros_12m"] = data["euros_12m"].fillna(0)
+    data["share_12m"] = data["share_12m"].fillna(0)
+    data["gap_eur"] = data["gap_eur"].fillna(0)
+    data["potencial_eur"] = data["potencial_eur"].fillna(0)
+
+    for _, row in data.iterrows():
+        if pd.isna(row["data_ultim_pedido"]):
+            continue
+
+        dies_sense = int((today_ts - row["data_ultim_pedido"]).days)
+
+        # Fugat: >365 dies sense comprar O share = 0%
+        if dies_sense <= DIES_FUGAT_THR and row["share_12m"] > 0:
+            continue
+
+        cicle = row["cicle_mig_dies"] if not pd.isna(row["cicle_mig_dies"]) else None
+        cicle_std = row["cicle_std_dies"] if (
+            not pd.isna(row["cicle_std_dies"]) and row["cicle_std_dies"] > 0
+        ) else (cicle * 0.30 if cicle is not None else None)
+
+        alert = {
+            "id_cliente": int(row["id_cliente"]),
+            "provincia": provincia_map.get(row["id_cliente"], "") if provincia_map else "",
+            "familia_potencial": row["familia_potencial"],
+            "segment": "fugat",
+            "segment_anterior": None,
+            "tipus_alerta": "fugat",
+            "urgencia": "baixa",
+            "canal": "televenda",
+            "share_12m": round(float(row["share_12m"]), 3),
+            "potencial_anual_eur": round(float(row["potencial_eur"]), 2),
+            "euros_12m": round(float(row["euros_12m"]), 2),
+            "gap_eur": round(float(row["gap_eur"]), 2),
+            "dies_sense_compra": dies_sense,
+            "num_intervals": int(row["num_intervals"]) if not pd.isna(row["num_intervals"]) else 0,
+            "cicle_mig_dies": round(float(cicle), 1) if cicle is not None else None,
+            "cicle_std_dies": round(float(cicle_std), 1) if cicle_std is not None else None,
+            "dies_retard": 0,
+            "z_score": None,
+            "proxim_pedido_esperat": None,
+            "dies_stock": None,
+            "prioritat": round(float(row["gap_eur"]) * 0.1, 2),
+            "motiu": (
+                f"Client FUGAT de {row['familia_potencial']}. "
+                f"Porta MÉS D'UN ANY sense comprar ({dies_sense} dies). "
+                + (f"Cicle habitual era: {cicle:.0f} dies. " if cicle is not None else "")
+                + "Requereix recuperació."
+            ),
+            "data_alerta": today,
+        }
+        alerts.append(alert)
+
+    return pd.DataFrame(alerts) if alerts else pd.DataFrame()
+
+
 def run(today=None, family=None, verbose=False):
+    """Executa el motor complet de predicció i alertes per commodities.
+
+    Args:
+        today: Data de referència (str YYYY-MM-DD o datetime). Per defecte: avui.
+        family: Nom de família per filtrar ('Anestesia', 'Bioseguridad') o None (totes).
+        verbose: Mostra output per consola.
+
+    Returns:
+        Tuple (alerts_df, segments_df):
+          alerts_df:  DataFrame amb alertes prioritzades
+          segments_df: DataFrame amb dades de segmentació (per compatibilitat)
+    """
     if today is None:
         today = datetime.now().strftime("%Y-%m-%d")
     if isinstance(today, datetime):
         today = today.strftime("%Y-%m-%d")
 
+    if verbose:
+        print(f"╔═ Motor Predicció Commodities ════ Data: {today} ═╗")
+        if family:
+            print(f"║  Família: {family}")
+
+    # ── 1. Carregar dades ────────────────────────────────
+    if verbose:
+        print("📥 Carregant dades...", end=" ")
     raw = load_data(today=today)
+
     if family:
         raw = raw[raw["familia_potencial"] == family]
 
-    monthly = build_monthly_aggregate(raw)
-    monthly = calc_rolling_share(monthly)
-    monthly = attach_potencial(monthly, raw)
-    cycles = calc_restock_cycle(raw)
-    segments = segment_all(monthly, cycles, today)
+    if verbose:
+        print(f"{len(raw):,} línies · {raw['id_cliente'].nunique():,} clients")
 
+    # ── 2. Càlcul de cicles ──────────────────────────────
+    if verbose:
+        print("🔄 Cicles de reposició...", end=" ")
+    cycles = calc_restock_cycle(raw)
+    if verbose:
+        n_amb_cicle = cycles["cicle_mig_dies"].notna().sum()
+        print(f"{len(cycles):,} parelles ({n_amb_cicle:,} amb cicle)")
+
+    # ── 3. Share of wallet ───────────────────────────────
+    if verbose:
+        print("💰 Share of wallet 12m...", end=" ")
+    sow = calc_sow_and_gap(raw, today)
+    if verbose:
+        print(f"{len(sow):,} parelles")
+
+    # ── 4. Mapa de províncies ────────────────────────────
     prov_map = raw[["id_cliente", "provincia"]].drop_duplicates()
     prov_map = prov_map.groupby("id_cliente")["provincia"].first().to_dict()
 
-    alerts = generate_alerts(segments, today, prov_map)
+    # ── 5. Generar alertes principals ────────────────────
+    if verbose:
+        print("🔔 Generant alertes (anticipació + reactiva)...", end=" ")
+    alerts = generate_alerts(cycles, sow, today, prov_map)
+    if verbose:
+        print(f"{len(alerts):,} alertes generades")
+        if len(alerts) > 0:
+            for tipus, count in alerts["tipus_alerta"].value_counts().items():
+                print(f"   {tipus:>15s}: {count}")
+
+    # ── 6. Generar alertes de fugats ────────────────────
+    if verbose:
+        print("👻 Generant llista de fugats (>365 dies)...", end=" ")
+    fugats = generate_fugats(cycles, sow, today, prov_map)
+    n_fugats = len(fugats)
+    if verbose:
+        print(f"{n_fugats} clients fugats")
+
+    # Combinar: fugats van al final (baixa prioritat)
+    alerts = pd.concat([alerts, fugats], ignore_index=True) if not fugats.empty else alerts
+
+    # ── 7. Top alertes ───────────────────────────────────
+    actives = alerts[alerts["tipus_alerta"] != "fugat"] if len(alerts) > 0 else pd.DataFrame()
+    if verbose and len(actives) > 0:
+        print(f"\n{'─' * 60}")
+        print("TOP 5 ALERTES PRIORITZADES (excloent fugats)")
+        print(f"{'─' * 60}")
+        for i, (_, a) in enumerate(actives.head(5).iterrows()):
+            print(f"\n{i + 1}. #{a['id_cliente']}  |  {a.get('provincia', '?'):15s}  |  {a['familia_potencial']}")
+            print(f"   🔸 {a['tipus_alerta']:>15s}  |  {a['urgencia']:>8s}")
+            print(f"   Gap: {a['gap_eur']:>8.0f}€  |  Prioritat: {a['prioritat']:.1f}")
+            print(f"   Pròxim pedido: {a['proxim_pedido_esperat']}  |  Cicle: {a['cicle_mig_dies']:.0f}d")
+            print(f"   {a['motiu'][:130]}")
+
+    # ── 8. Resum ─────────────────────────────────────────
+    if verbose:
+        gap_total = alerts["gap_eur"].sum() if len(alerts) > 0 else 0
+        n_actius = alerts[alerts["tipus_alerta"] != "fugat"]["id_cliente"].nunique() if len(alerts) > 0 else 0
+        print(f"\n{'─' * 60}")
+        print(f"📊 RESUM: {n_actius} clients amb alerta activa + {n_fugats} fugats")
+        print(f"   Gap total recuperable: {gap_total:,.0f}€/any")
+        if len(actives) > 0:
+            print(f"   Prioritat mitjana (actives): {actives['prioritat'].mean():.0f}")
+
+    # ── Segments (per compatibilitat amb ensure_cache) ───
+    segments = cycles.merge(sow, on=["id_cliente", "familia_potencial"], how="left")
+    segments["segment"] = segments["cicle_mig_dies"].apply(
+        lambda x: "amb_historial" if not pd.isna(x) else "sense_historial"
+    )
+
     return alerts, segments

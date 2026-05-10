@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.database import init_db
+from backend.database import init_db, clear_cache
+from backend.config import today_str
 from backend.routers import alerts, stats, treated, clients
 
 app = FastAPI(
@@ -25,6 +26,7 @@ app.include_router(clients.router)
 @app.on_event("startup")
 def startup():
     init_db()
+    clear_cache(today_str())
 
 @app.get("/api/health")
 def health():

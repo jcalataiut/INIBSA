@@ -11,19 +11,15 @@ interface Props {
   onShowTreatedChange: (v: boolean) => void
 }
 
-const SEGMENTS = ['fidel', 'promiscu', 'marginal', 'en_risc', 'nou', 'perdut']
-const TIPUS = ['finestra_captura', 'risc_fuga', 'reposicio_endarrerida', 'reposicio_preventiva', 'reposicio_pendent', 'oportunitat_captura', 'monitoritzar', 'info']
-const URGENCIES = ['alta', 'mitjana', 'baixa']
+const SEGMENTS = ['amb_historial', 'sense_historial', 'fugat']
+const TIPUS = ['anticipacio', 'reactiva', 'fugat']
+const URGENCIES = ['critica', 'alta', 'mitjana', 'baixa']
 
 const LABEL_SEG: Record<string, string> = {
-  fidel: 'Fidel', promiscu: 'Promiscu', marginal: 'Marginal',
-  en_risc: 'En Risc', nou: 'Nou', perdut: 'Perdut',
+  amb_historial: 'Amb Historial', sense_historial: 'Sense Historial', fugat: 'Fugat',
 }
 const LABEL_TIPUS: Record<string, string> = {
-  finestra_captura: 'Finestra Captura', risc_fuga: 'Risc de Fuga',
-  reposicio_endarrerida: 'Rep. Endarrerida', reposicio_preventiva: 'Rep. Preventiva',
-  reposicio_pendent: 'Rep. Pendent', oportunitat_captura: 'Oport. Captura',
-  monitoritzar: 'Monitoritzar', info: 'Info',
+  anticipacio: 'Anticipació', reactiva: 'Reactiva', fugat: 'Fugat',
 }
 
 export default function Filters(props: Props) {

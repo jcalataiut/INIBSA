@@ -9,8 +9,9 @@ interface Props {
 
 export default function AlertCard({ alert, onToggleTreated, onClick }: Props) {
   const prioColor = alert.prioritat >= 500 ? '#E74C3C' : alert.prioritat >= 100 ? '#E67E22' : '#6B7280'
-  const borderColor = alert.tipus_alerta === 'finestra_captura' ? '#00B8A9'
-    : alert.tipus_alerta === 'risc_fuga' ? '#E74C3C'
+  const borderColor = alert.tipus_alerta === 'anticipacio' ? '#00B8A9'
+    : alert.tipus_alerta === 'reactiva' ? '#E74C3C'
+    : alert.tipus_alerta === 'fugat' ? '#6B7280'
     : '#E5E7EB'
 
   return (
