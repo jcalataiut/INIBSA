@@ -25,7 +25,7 @@ const LABEL_SEG: Record<string, string> = {
 const URGENCIES = ['critica', 'alta', 'mitjana', 'baixa']
 
 const LABEL_TIPUS: Record<string, string> = {
-  anticipacio: 'Anticipació', 
+  anticipacio: 'Anticipació',
   reactiva: 'Reactiva',
   geographical_alert: 'Geogràfica',
   sow_lleial_promiscu: 'Lleial a Promiscu',
@@ -46,7 +46,7 @@ export default function Filters(props: Props) {
   return (
     <>
       <button style={styles.filterBtn} onClick={() => setOpen(true)}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" /></svg>
         Filtres
         {activeCount > 0 && <span style={styles.badge}>{activeCount}</span>}
       </button>

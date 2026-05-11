@@ -111,8 +111,8 @@ export default function AlertDetail({ alert, onBack, onToggleTreated }: Props) {
       <div style={{ ...styles.hero, borderLeft: `4px solid ${borderColor}`, padding: '24px 32px', marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h2 style={styles.title}>#{alert.id_cliente} · {alert.familia_potencial}</h2>
-            <span style={styles.heroProv}>{alert.provincia}</span>
+            <h2 style={styles.title}>#{alert.id_cliente} · {alert.familia_potencial === 'Biomateriales' ? 'Biomaterials' : alert.familia_potencial}</h2>
+            <span style={styles.heroProv}>{alert.provincia && alert.provincia !== '?' ? alert.provincia : ''}</span>
           </div>
           <ContactActions alert={alert} onToggleTreated={onToggleTreated} variant="large" />
         </div>

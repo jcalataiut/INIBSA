@@ -130,7 +130,7 @@ export default function App() {
   const tractades = actives.filter(a => a.tractada)
   const pendents = showTreated ? actives : actives.filter(a => !a.tractada)
 
-  const today = new Date()
+
 
   return (
     <div style={styles.container}>
@@ -140,9 +140,9 @@ export default function App() {
           <div style={styles.topHeader}>
             <div>
               <h1 style={styles.title}>{TITLE[activeTab]}</h1>
-              <p style={styles.dateSub}>{formatDate(today)}</p>
+              <p style={styles.dateSub}>{formatDate(new Date())}</p>
             </div>
-            
+
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {activeTab === 'briefing' && (
                 <Filters
@@ -164,8 +164,8 @@ export default function App() {
           </div>
 
           {activeTab === 'briefing' && (
-            <div style={styles.controlsRow}>
-              <div style={styles.toggle}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+              <div style={{ ...styles.toggle, width: 'fit-content' }}>
                 <button
                   style={{ ...styles.toggleBtn, ...(familiaFilter === 'commodities' ? styles.toggleActive : {}) }}
                   onClick={() => {
@@ -173,7 +173,9 @@ export default function App() {
                     setFilterSegment([])
                     setFilterTipus([])
                   }}
-                >Consumibles</button>
+                >
+                  Commodities
+                </button>
                 <button
                   style={{ ...styles.toggleBtn, ...(familiaFilter === 'technicals' ? styles.toggleActive : {}) }}
                   onClick={() => {
@@ -181,7 +183,9 @@ export default function App() {
                     setFilterSegment([])
                     setFilterTipus([])
                   }}
-                >Tècnics</button>
+                >
+                  Technicals
+                </button>
               </div>
             </div>
           )}

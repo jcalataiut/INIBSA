@@ -44,7 +44,9 @@ const AlertCard = memo(function AlertCard({ alert, onToggleTreated, onClick }: P
         <div style={styles.left}>
           <span style={styles.id}>#{alert.id_cliente}</span>
           <span style={styles.sep}>·</span>
-          <span style={styles.familia}>{alert.familia_potencial}</span>
+          <span style={styles.familia}>
+            {alert.familia_potencial === 'Biomateriales' ? 'Biomaterials' : alert.familia_potencial}
+          </span>
         </div>
         <div style={styles.right}>
           <ContactActions alert={alert} onToggleTreated={onToggleTreated} variant="compact" />

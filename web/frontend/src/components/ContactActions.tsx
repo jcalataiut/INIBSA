@@ -35,7 +35,7 @@ export default function ContactActions({ alert, onToggleTreated, variant = 'comp
       return `ASSUMPTE: Millora de condicions en ${familia_potencial} - Inibsa\n\nHola,\n\nEstem revisant els nostres acords comercials per a la línia de ${familia_potencial}. Hem vist que actualment el vostre share és del ${sharePct}%, i ens agradaria parlar sobre com podríem arribar a un acord més global que us beneficiï econòmicament.\n\nSalutacions,\nEquip Inibsa (Client #${id_cliente})`;
     }
 
-    return `ASSUMPTE: Seguiment comercial - Inibsa\n\nHola,\n\nEs posa en contacte amb vosaltres el vostre gestor d'Inibsa per comentar l'evolució de la línia de ${familia_potencial} i revisar si teniu alguna necessitat pendent que puguem resoldre.\n\nQuedem a la vostra disposició.\n\nSalutacions,\nEquip Inibsa (Client #${id_cliente})`;
+    return `Hola, contactem amb vosaltres pel client #${id_cliente} per parlar de ${familia_potencial}.`;
   }
 
   const handleMail = (e: MouseEvent) => {
@@ -139,30 +139,7 @@ export default function ContactActions({ alert, onToggleTreated, variant = 'comp
                   
                   <p style={{ ...styles.bodyLabel, marginTop: 24 }}>Guió proposat per a la trucada:</p>
                   <div style={styles.scriptBox}>
-                    {alert.tipus_alerta === 'anticipacio' && (
-                      <p>"Bon dia, soc de l'equip comercial d'Inibsa. Trucava per comentar-vos que hem vist que aviat us tocaria reposar {alert.familia_potencial}. Voldríeu que us gestionéssim la comanda per avançat i així assegurar l'estoc?"</p>
-                    )}
-                    {alert.tipus_alerta === 'reactiva' && (
-                      <p>"Hola, em poso en contacte amb vosaltres perquè hem vist un petit retard en la vostra comanda habitual de {alert.familia_potencial}. Ha anat tot bé amb l'última entrega? Necessiteu que us ajudem a preparar la següent?"</p>
-                    )}
-                    {alert.tipus_alerta === 'geographical_alert' && (
-                      <p>"Bones, estem revisant les clíniques de la zona de {alert.provincia} i m'agradaria comentar-vos algunes promocions especials que tenim ara en {alert.familia_potencial} per als nostres clients més actius. Us aniria bé parlar-ne un moment?"</p>
-                    )}
-                    {alert.tipus_alerta === 'fugat' && (
-                      <p>"Hola, fa temps que no tenim el plaer de parlar. He vist que fa un temps que no ens demaneu {alert.familia_potencial} i voldríem saber si ha passat alguna cosa o si podem fer alguna oferta per recuperar-vos com a clients."</p>
-                    )}
-                    {alert.tipus_alerta === 'sow_lleial_promiscu' && (
-                      <p>"Bones! Trucava perquè he vist que darrerament heu baixat una mica el volum de {alert.familia_potencial}. Hi ha hagut algun canvi en la clínica o algun preu de la competència que vulgueu que revisem per tornar a ser el vostre proveïdor principal?"</p>
-                    )}
-                    {alert.tipus_alerta === 'sow_promiscu_fuga' && (
-                      <p>"Hola, em poso en contacte amb caràcter urgent perquè hem detectat una caiguda molt forta en {alert.familia_potencial}. No voldríem perdre la vostra confiança. Què podem fer per millorar la nostra oferta actual?"</p>
-                    )}
-                    {alert.tipus_alerta === 'sow_fuga_promiscu' && (
-                      <p>"Bon dia! Estem molt contents de veure que heu tornat a confiar en nosaltres per a {alert.familia_potencial}. Trucava per agrair-vos la comanda i saber si podem fer res més per consolidar aquesta tornada."</p>
-                    )}
-                    {alert.tipus_alerta === 'sow_promiscu_lleial' && (
-                      <p>"Hola! Enhorabona, hem vist que ja sou clients 100% lleials en {alert.familia_potencial}. Us truco per agrair-vos la fidelitat i confirmar que teniu les millors condicions aplicades al vostre compte."</p>
-                    )}
+                    <p>"Hola, contactem amb vosaltres pel client #{alert.id_cliente} per parlar de {alert.familia_potencial === 'Biomateriales' ? 'Biomaterials' : alert.familia_potencial}."</p>
                   </div>
                   
                   <button style={styles.callBtn} onClick={() => setModalType(null)}>

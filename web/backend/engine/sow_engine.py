@@ -52,9 +52,12 @@ def run(today=None, verbose=False, **kwargs):
             if s >= 0.70: return "lleial"
             if s >= 0.30: return "promiscu"
             return "fuga"
-            
-        cur_seg = get_seg(current_share)
+        # Càlcul del Gap (només si estem per sota del 70%)
+        # El gap és el que ens falta per arribar al 70% del seu potencial
+        gap = max(0, (0.7 - current_share) * potencial)
+        
         pre_seg = get_seg(prev_share)
+        cur_seg = get_seg(current_share)
         
         if cur_seg != pre_seg:
             tipus = f"sow_{pre_seg}_{cur_seg}"
@@ -91,7 +94,7 @@ def run(today=None, verbose=False, **kwargs):
         elif pre_seg == "promiscu" and cur_seg == "lleial":
             tipus = "sow_promiscu_lleial"
             prioritat = 50
-            motiu = f"ÈXIT: El client s'ha tornat Lleial a {familia} (share: {current_share*100:.0f}%)."
+            motiu = f"ÈXIT: El client ja és Lleial a {familia} (share: {current_share*100:.0f}%). Objectiu de fidelització assolit."
         
         if tipus:
             alerts.append({
